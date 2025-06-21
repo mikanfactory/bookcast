@@ -47,7 +47,7 @@ class GeminiOCR:
         async with self.semaphore:
             extracted_text = await self.extract(image)
 
-        ocr_path = pdf_path.parent / pdf_path.stem / "ocr"
+        ocr_path = pdf_path.parent / pdf_path.stem / "texts"
         ocr_path.mkdir(parents=True, exist_ok=True)
 
         text_path = ocr_path / f"page_{page_num:03d}.txt"

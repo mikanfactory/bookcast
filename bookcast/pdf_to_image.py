@@ -13,12 +13,12 @@ def convert_pdf_to_images(filename: str) -> List[Image.Image]:
 
     images = convert_from_path(pdf_path)
 
-    output_path = pdf_path.parent / pdf_path.stem
-    output_path.mkdir(parents=True, exist_ok=True)
+    image_path = pdf_path.parent / pdf_path.stem / "images"
+    image_path.mkdir(parents=True, exist_ok=True)
 
     for i, image in enumerate(images):
         page_num = 1 + i
-        image_path = output_path / f"page_{page_num:03d}.png"
+        image_path = image_path / f"page_{page_num:03d}.png"
         image.save(image_path, "PNG")
 
     return images
