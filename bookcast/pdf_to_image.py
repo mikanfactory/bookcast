@@ -18,7 +18,7 @@ def convert_pdf_to_images(filename: str) -> List[Image.Image]:
 
     for i, image in enumerate(images):
         page_num = 1 + i
-        image_path = image_path / f"page_{page_num:03d}.png"
-        image.save(image_path, "PNG")
+        filename = image_path / f"page_{page_num:03d}.png"
+        image.save(filename, "PNG")
 
     return images
