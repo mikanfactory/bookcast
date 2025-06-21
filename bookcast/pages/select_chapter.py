@@ -60,8 +60,41 @@ def decrement_page(page_number: int):
         st.session_state[State.page_number] = page_number - 1
 
 
-def validate_chapter_config(chapters: Chapters):
-    pass
+def validate_chapter_config(chapters: Chapters) -> bool:
+    specified_max_chapter = chapters.specified_max_chapter
+    if chapters.chapters == {}:
+        st.error("章が選択されていません。1つ以上選択してください。")
+        return False
+
+    if len(chapters.chapters) < specified_max_chapter:
+        not_filled_chapters = []
+        expected = range(1, specified_max_chapter)
+        actual = chapters.chapters.keys()
+        for c in expected:
+            if c not in actual:
+                not_filled_chapters.append(c)
+
+        text = "章の設定が不完全です。すべての章を設定してください。\n\n"
+        text += "設定されていない章: " + ", ".join(map(str, not_filled_chapters))
+        st.error(text)
+        return False
+
+    specified_pages = set()
+    duplicates = []
+    for chapter_num, config in chapters.chapters.items():
+        if config.page_number not in specified_pages:
+            specified_pages.add(config.page_number)
+        else:
+            duplicates.append(config.page_number)
+
+    if duplicates:
+        text = "ページ番号の重複があります。以下のページ番号が重複しています:\n\n"
+        text += ", ".join(map(str, duplicates))
+        st.error(text)
+        return False
+
+    return True
+
 
 
 def main():
@@ -77,7 +110,7 @@ def main():
         st.image(image_path)
 
     with col2:
-        with st.container(height=600):
+        with st.container(height=650):
             text_directory = file_path.parent / file_path.stem / "texts"
             text_path = text_directory / f"page_{page_number:03d}.txt"
             with open(text_path, "r") as f:
@@ -86,7 +119,7 @@ def main():
             st.write(text)
 
     with st.container():
-        left, center, right = st.columns(3)
+        left, center, right = st.columns(3, vertical_alignment='bottom')
         with left:
             st.button("前のページ", on_click=decrement_page, args=(page_number,))
 
@@ -107,14 +140,23 @@ def main():
                 key="chapter_select",
                 args=(chapters, page_number),
                 index=None,
+                placeholder="章を選択",
             )
+
+    with st.expander("設定済みの章", expanded=False):
+        if chapters.chapters:
+            text = ""
+            for k, v in chapters.chapters.items():
+                text += f"第{k}章: ページ {v.page_number}\n\n\n"
+
+            st.write(text)
+        else:
+            st.write("設定された章はありません。")
 
     finish_chapter_setting = st.button("設定完了")
     if finish_chapter_setting:
         if validate_chapter_config(chapters):
             st.switch_page(Rooter.podcast_setting_page())
-        else:
-            st.error("章の設定に問題があります。確認してください。")
 
 
 if __name__ == "__main__":
