@@ -19,7 +19,7 @@ class Chapters(BaseModel):
     chapters: dict[int, ChapterConfig] = {}
 
 
-def initialise():
+def initialize():
     # filename = st.session_state[State.filename]
     # max_page_number = st.session_state[State.max_page_number]
 
@@ -99,7 +99,7 @@ def validate_chapter_config(chapters: Chapters) -> bool:
 
 
 def main():
-    filename, page_number, max_page_number, chapters = initialise()
+    filename, page_number, max_page_number, chapters = initialize()
     st.write("select chapter page")
 
     col1, col2 = st.columns(2)
