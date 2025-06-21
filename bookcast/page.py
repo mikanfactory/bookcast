@@ -2,11 +2,13 @@ import streamlit as st
 
 from enum import StrEnum
 
+
 class PageName(StrEnum):
     PROJECT = "project"
     CHAPTER = "chapter"
     PODCAST_SETTING = "podcast_setting"
     PODCAST = "podcast"
+
 
 class Rooter:
     RootMap = {
@@ -31,6 +33,7 @@ class Rooter:
     @classmethod
     def podcast_page(cls):
         return cls.RootMap[PageName.PODCAST]
+
 
 def create_page():
     project_page = st.Page(
@@ -57,5 +60,5 @@ def create_page():
         # [chapter_page, podcast_setting_page, podcast_page],
         position="hidden",
     )
-    st.set_page_config(page_title="Bookcast", page_icon=":material/edit:")
+    st.set_page_config(page_title="Bookcast", layout="wide")
     pg.run()
