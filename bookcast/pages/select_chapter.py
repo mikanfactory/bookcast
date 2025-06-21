@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 logger = get_logger(__name__)
 
+CHAPTER_SELECT_SELECT_BOX_KEY = "chapter_select"
 
 class ChapterConfig(BaseModel):
     page_number: int
@@ -39,7 +40,7 @@ def initialise():
 
 
 def update_chapter(chapters: Chapters, page_number: int):
-    selected_chapter = st.session_state["chapter_select"]
+    selected_chapter = st.session_state[CHAPTER_SELECT_SELECT_BOX_KEY]
     config = ChapterConfig(page_number=page_number)
 
     chapters.chapters[selected_chapter] = config
@@ -137,7 +138,7 @@ def main():
                 options=list(range(1, max_chapter + 6)),
                 label_visibility="hidden",
                 on_change=update_chapter,
-                key="chapter_select",
+                key=CHAPTER_SELECT_SELECT_BOX_KEY,
                 args=(chapters, page_number),
                 index=None,
                 placeholder="章を選択",
