@@ -1,5 +1,6 @@
 import streamlit as st
 from bookcast.pdf_to_image import convert_pdf_to_images
+from bookcast.ocr import extract_text
 
 st.write("project page")
 
@@ -13,5 +14,7 @@ if uploaded_file is not None:
         images = convert_pdf_to_images(file_name)
 
         st.write(images[0])
+
+        extract_text(file_name)
 
         st.success(f"File '{uploaded_file.name}' uploaded successfully!")
