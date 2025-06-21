@@ -25,5 +25,5 @@ def create_page():
         [project_page, chapter_page, podcast_setting_page, podcast_page],
         position="hidden",
     )
-    st.set_page_config(page_title="Data manager", page_icon=":material/edit:")
+    st.set_page_config(page_title="Bookcast", page_icon=":material/edit:")
     pg.run()
