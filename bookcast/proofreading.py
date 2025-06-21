@@ -27,7 +27,7 @@ def generate_content_from_string(
     response = client.models.generate_content(
         model=model,
         config=types.GenerateContentConfig(system_instruction=prompt),
-        contents=text
+        contents=text,
     )
 
     return response.text
@@ -83,6 +83,7 @@ def split_by_token_limit(text, limit):
         chunks.append(text_chunk)
         tokens = tokens[limit:]
     return chunks
+
 
 def main():
     with open("downloads/プログラマー脳.txt", "r") as f:
