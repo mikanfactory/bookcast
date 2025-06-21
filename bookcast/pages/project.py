@@ -21,6 +21,7 @@ if uploaded_file is not None:
 
         logger.info(f"Converting PDF to images for file: {file_name}")
         images = convert_pdf_to_images(file_name)
+        st.session_state[State.max_page_number] = len(images) + 1
 
         logger.info(f"Extracting text from images for file: {file_name}")
         extract_text(file_name)
