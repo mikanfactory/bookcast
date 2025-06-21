@@ -54,6 +54,7 @@ def create_page():
 
     pg = st.navigation(
         [project_page, chapter_page, podcast_setting_page, podcast_page],
+        # [chapter_page, podcast_setting_page, podcast_page],
         position="hidden",
     )
     st.set_page_config(page_title="Bookcast", page_icon=":material/edit:")

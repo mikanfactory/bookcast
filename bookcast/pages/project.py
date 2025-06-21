@@ -5,6 +5,7 @@ from streamlit.logger import get_logger
 from bookcast.page import Rooter
 from bookcast.pdf_to_image import convert_pdf_to_images
 from bookcast.ocr import extract_text
+from bookcast.session_state import SessionState as State
 
 logger = get_logger(__name__)
 
@@ -25,5 +26,6 @@ if uploaded_file is not None:
         extract_text(file_name)
 
     st.success(f"File '{uploaded_file.name}' uploaded successfully!")
+    st.session_state[State.filename] = file_name
     time.sleep(3)
     st.switch_page(Rooter.chapter_page())
