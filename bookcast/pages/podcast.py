@@ -13,7 +13,11 @@ selected_voice_name = st.selectbox(
 )
 
 if selected_voice_name:
-    description = [voice.description for voice in voice_options.options if voice.voice_name == selected_voice_name]
+    description = [
+        voice.description
+        for voice in voice_options.options
+        if voice.voice_name == selected_voice_name
+    ]
     st.write(description)
 
 
