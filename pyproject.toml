@@ -25,3 +25,12 @@ dev = [
 [tool.uv.sources]
 jisui = { workspace = true }
 bookcast = { workspace = true }
+
+[tool.ruff]
+lint.select = [
+    "C9",
+    "E",
+    "F",
+    "W",
+    "I",
+]

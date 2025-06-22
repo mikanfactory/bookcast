@@ -1,6 +1,7 @@
 import streamlit as st
+from bookcast.file_paths import build_image_path
 from streamlit.logger import get_logger
-from pathlib import Path
+from bookcast.file_paths import build_text_path
 from bookcast.page import Rooter
 from bookcast.session_state import SessionState as State
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 logger = get_logger(__name__)
 
 CHAPTER_SELECT_SELECT_BOX_KEY = "chapter_select"
+
 
 class ChapterConfig(BaseModel):
     page_number: int
@@ -97,30 +99,25 @@ def validate_chapter_config(chapters: Chapters) -> bool:
     return True
 
 
-
 def main():
     filename, page_number, max_page_number, chapters = initialize()
     st.write("select chapter page")
 
     col1, col2 = st.columns(2)
     with col1:
-        file_path = Path(f"downloads/{filename}")
-        image_directory = file_path.parent / file_path.stem / "images"
-        image_path = image_directory / f"page_{page_number:03d}.png"
-
+        image_path = build_image_path(filename, page_number)
         st.image(image_path)
 
     with col2:
         with st.container(height=650):
-            text_directory = file_path.parent / file_path.stem / "texts"
-            text_path = text_directory / f"page_{page_number:03d}.txt"
+            text_path = build_text_path(filename, page_number)
             with open(text_path, "r") as f:
                 text = f.read()
 
             st.write(text)
 
     with st.container():
-        left, center, right = st.columns(3, vertical_alignment='bottom')
+        left, center, right = st.columns(3, vertical_alignment="bottom")
         with left:
             st.button("前のページ", on_click=decrement_page, args=(page_number,))
 

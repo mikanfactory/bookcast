@@ -1,4 +1,5 @@
-from pathlib import Path
+from bookcast.file_paths import build_text_directory
+from bookcast.file_paths import build_downloads_path
 import io
 import asyncio
 import logging
@@ -42,15 +43,15 @@ class GeminiOCR:
         return extracted_text
 
     async def extract_text(
-        self, pdf_path: Path, page_num: int, image: Image.Image
+        self, filename: str, page_num: int, image: Image.Image
     ) -> str:
         async with self.semaphore:
             extracted_text = await self.extract(image)
 
-        ocr_path = pdf_path.parent / pdf_path.stem / "texts"
-        ocr_path.mkdir(parents=True, exist_ok=True)
+        text_dir = build_text_directory(filename)
+        text_dir.mkdir(parents=True, exist_ok=True)
 
-        text_path = ocr_path / f"page_{page_num:03d}.txt"
+        text_path = text_dir / f"page_{page_num:03d}.txt"
         with open(text_path, "w") as f:
             f.write(extracted_text)
 
@@ -60,10 +61,10 @@ class GeminiOCR:
 async def combine(filename: str):
     ocr = GeminiOCR(GEMINI_API_KEY)
 
-    pdf_path = Path(f"downloads/{filename}")
+    pdf_path = build_downloads_path(filename)
 
     images = convert_from_path(pdf_path)
-    tasks = [ocr.extract_text(pdf_path, n + 1, image) for n, image in enumerate(images)]
+    tasks = [ocr.extract_text(filename, n + 1, image) for n, image in enumerate(images)]
 
     await asyncio.gather(*tasks)
 

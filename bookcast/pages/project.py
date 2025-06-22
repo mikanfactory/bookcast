@@ -6,6 +6,7 @@ from bookcast.page import Rooter
 from bookcast.pdf_to_image import convert_pdf_to_images
 from bookcast.ocr import extract_text
 from bookcast.session_state import SessionState as State
+from bookcast.file_paths import build_downloads_path
 
 logger = get_logger(__name__)
 
@@ -16,7 +17,9 @@ if uploaded_file is not None:
     with st.spinner("Processing..."):
         file_name = uploaded_file.name
         logger.info(f"Save file: {file_name}")
-        with open(f"downloads/{file_name}", "wb") as f:
+
+        downloads_path = build_downloads_path(file_name)
+        with open(downloads_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
         logger.info(f"Converting PDF to images for file: {file_name}")
