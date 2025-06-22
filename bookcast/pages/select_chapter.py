@@ -3,12 +3,11 @@ from streamlit.logger import get_logger
 from bookcast.path_resolver import resolve_text_path, resolve_image_path
 from bookcast.page import Rooter
 from bookcast.session_state import SessionState as State
+from bookcast.session_state import ChapterPageSessionState as PState
 
 from pydantic import BaseModel
 
 logger = get_logger(__name__)
-
-CHAPTER_SELECT_SELECT_BOX_KEY = "chapter_select"
 
 
 class ChapterConfig(BaseModel):
@@ -28,21 +27,21 @@ def initialize():
     filename = st.session_state.get(State.filename, "2506.05345.pdf")
     max_page_number = st.session_state.get(State.max_page_number, 23)
 
-    if not st.session_state.get(State.page_number):
-        st.session_state[State.page_number] = 1
+    if not st.session_state.get(PState.current_page):
+        st.session_state[PState.current_page] = 1
 
     if not st.session_state.get(State.chapters):
         st.session_state[State.chapters] = Chapters()
 
-    page_number = st.session_state[State.page_number]
+    current_page = st.session_state[PState.current_page]
     chapters = st.session_state[State.chapters]
 
-    return filename, page_number, max_page_number, chapters
+    return filename, current_page, max_page_number, chapters
 
 
-def update_chapter(chapters: Chapters, page_number: int):
-    selected_chapter = st.session_state[CHAPTER_SELECT_SELECT_BOX_KEY]
-    config = ChapterConfig(page_number=page_number)
+def update_chapter(chapters: Chapters, current_page: int):
+    selected_chapter = st.session_state[PState.chapter_select]
+    config = ChapterConfig(page_number=current_page)
 
     chapters.chapters[selected_chapter] = config
     chapters.specified_max_chapter = max(
@@ -52,14 +51,14 @@ def update_chapter(chapters: Chapters, page_number: int):
     st.session_state[State.chapters] = chapters
 
 
-def increment_page(page_number: int, max_page_number: int):
-    if page_number < max_page_number:
-        st.session_state[State.page_number] = page_number + 1
+def increment_page(current_page: int, max_page_number: int):
+    if current_page < max_page_number:
+        st.session_state[PState.current_page] = current_page + 1
 
 
-def decrement_page(page_number: int):
-    if page_number >= 1:
-        st.session_state[State.page_number] = page_number - 1
+def decrement_page(current_page: int):
+    if current_page >= 1:
+        st.session_state[PState.current_page] = current_page - 1
 
 
 def validate_chapter_config(chapters: Chapters) -> bool:
@@ -99,17 +98,17 @@ def validate_chapter_config(chapters: Chapters) -> bool:
 
 
 def main():
-    filename, page_number, max_page_number, chapters = initialize()
+    filename, current_page, max_page_number, chapters = initialize()
     st.write("select chapter page")
 
     col1, col2 = st.columns(2)
     with col1:
-        image_path = resolve_image_path(filename, page_number)
+        image_path = resolve_image_path(filename, current_page)
         st.image(image_path)
 
     with col2:
         with st.container(height=650):
-            text_path = resolve_text_path(filename, page_number)
+            text_path = resolve_text_path(filename, current_page)
             with open(text_path, "r") as f:
                 text = f.read()
 
@@ -118,13 +117,13 @@ def main():
     with st.container():
         left, center, right = st.columns(3, vertical_alignment="bottom")
         with left:
-            st.button("前のページ", on_click=decrement_page, args=(page_number,))
+            st.button("前のページ", on_click=decrement_page, args=(current_page,))
 
         with center:
             st.button(
                 "次のページ",
                 on_click=increment_page,
-                args=(page_number, max_page_number),
+                args=(current_page, max_page_number),
             )
 
         with right:
@@ -134,8 +133,8 @@ def main():
                 options=list(range(1, max_chapter + 6)),
                 label_visibility="hidden",
                 on_change=update_chapter,
-                key=CHAPTER_SELECT_SELECT_BOX_KEY,
-                args=(chapters, page_number),
+                key=PState.chapter_select,
+                args=(chapters, current_page),
                 index=None,
                 placeholder="章を選択",
             )
