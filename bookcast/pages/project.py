@@ -6,7 +6,7 @@ from bookcast.page import Rooter
 from bookcast.pdf_to_image import convert_pdf_to_images
 from bookcast.ocr import extract_text
 from bookcast.session_state import SessionState as State
-from bookcast.file_paths import build_downloads_path
+from bookcast.path_resolver import build_downloads_path
 
 logger = get_logger(__name__)
 

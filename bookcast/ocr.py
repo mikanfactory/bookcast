@@ -1,5 +1,3 @@
-from bookcast.file_paths import build_text_directory
-from bookcast.file_paths import build_downloads_path
 import io
 import asyncio
 import logging
@@ -8,6 +6,7 @@ from PIL import Image
 from google import genai
 from google.genai import types
 from bookcast.config import GEMINI_API_KEY
+from bookcast.path_resolver import build_text_directory, build_downloads_path
 
 
 logger = logging.getLogger(__name__)

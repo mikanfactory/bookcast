@@ -1,7 +1,6 @@
 import streamlit as st
-from bookcast.file_paths import build_image_path
 from streamlit.logger import get_logger
-from bookcast.file_paths import build_text_path
+from bookcast.path_resolver import resolve_text_path, resolve_image_path
 from bookcast.page import Rooter
 from bookcast.session_state import SessionState as State
 
@@ -105,12 +104,12 @@ def main():
 
     col1, col2 = st.columns(2)
     with col1:
-        image_path = build_image_path(filename, page_number)
+        image_path = resolve_image_path(filename, page_number)
         st.image(image_path)
 
     with col2:
         with st.container(height=650):
-            text_path = build_text_path(filename, page_number)
+            text_path = resolve_text_path(filename, page_number)
             with open(text_path, "r") as f:
                 text = f.read()
 
