@@ -98,13 +98,6 @@ class VoiceOptions:
             ]
         )
 
-    def resolve_voice_option_by_name(self, voice_name: str) -> VoiceOption | None:
-        for option in self.males.options + self.females.options:
-            if option.voice_name == voice_name:
-                return option
-
-        return None
-
     def _resolve_voice_option_by_index(
         self, index: int, sex: Sex
     ) -> VoiceOption | None:
@@ -114,7 +107,7 @@ class VoiceOptions:
             return self.females.options[index - 1]
 
     @property
-    def _formatted_male_options(self) -> list[str]:
+    def formatted_male_options(self) -> list[str]:
         acc = []
         for i, option in enumerate(self.males.options):
             acc.append(f"男性（{i + 1}） - {option.description}")
@@ -122,20 +115,15 @@ class VoiceOptions:
         return acc
 
     @property
-    def _formatted_female_options(self) -> list[str]:
+    def formatted_female_options(self) -> list[str]:
         acc = []
         for i, option in enumerate(self.females.options):
             acc.append(f"女性（{i + 1}） - {option.description}")
 
         return acc
 
-    @property
-    def formatted_options(self) -> list[str]:
-        return self._formatted_male_options + self._formatted_female_options
-
-    def resolve_voice_option_by_formatted_string(
-        self, string: str
-    ) -> VoiceOption | None:
+    def resolve_voice_option(self, string: str) -> VoiceOption | None:
+        """selectboxの選択肢から音声オプションを解決する"""
         pattern = r"(男性|女性)（(\d+)）\s*-\s*.+"
         match = re.match(pattern, string)
 

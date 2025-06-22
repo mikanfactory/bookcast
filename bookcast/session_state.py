@@ -5,6 +5,7 @@ class SessionState(StrEnum):
     filename = "_filename"
     max_page_number = "_max_page_number"
     chapters = "_chapters"
+    podcast_setting = "_podcast_setting"
 
 
 class ChapterPageSessionState(StrEnum):
