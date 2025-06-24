@@ -1,15 +1,11 @@
+import time
 import streamlit as st
-from pydantic import BaseModel
 
 from bookcast.page import Rooter
+from bookcast.script_writing import generate_script
 from bookcast.voice_option import VoiceOptions
-
-class PodcastSetting(BaseModel):
-    num_of_people: int
-    personality1_name: str
-    personality2_name: str
-    length: int
-    prompt: str
+from bookcast.models import PodcastSetting
+from bookcast.session_state import SessionState as State
 
 
 def main():
@@ -36,12 +32,12 @@ def main():
             options=voice_options.formatted_female_options
             + voice_options.formatted_male_options,
             index=6,
-            disabled=disabled
+            disabled=disabled,
         )
         personality2_option = voice_options.resolve_voice_option(personality2)
         st.audio(
             f"downloads/sample_voices/{personality2_option.voice_name}.wav",
-            end_time=0 if disabled else None
+            end_time=0 if disabled else None,
         )
 
     length_of_podcast = st.number_input(
@@ -64,7 +60,20 @@ def main():
             prompt=prompt,
         )
         st.session_state.podcast_setting = podcast_setting
-        st.switch_page(Rooter.podcast_page())
+
+        with st.spinner("ポッドキャストの台本を生成中..."):
+            podcast_script = generate_script(
+                filename=st.session_state[State.filename],
+                max_page_number=st.session_state[State.max_page_number],
+                chapters=st.session_state[State.chapters],
+                podcast_setting=podcast_setting,
+            )
+
+        st.success(f"台本の作成が完了しました！")
+        st.session_state[State.podcast_script] = podcast_script
+
+        time.sleep(3)
+        st.switch_page(Rooter.podcast_script_page())
 
 
 if __name__ == "__main__":

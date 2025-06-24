@@ -23,6 +23,9 @@ class FemaleVoiceOptions(BaseModel):
 
 
 class VoiceOptions:
+    males: MaleVoiceOptions
+    females: FemaleVoiceOptions
+
     def __init__(self):
         self.males = MaleVoiceOptions(
             options=[

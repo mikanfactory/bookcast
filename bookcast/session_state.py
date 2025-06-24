@@ -6,6 +6,7 @@ class SessionState(StrEnum):
     max_page_number = "_max_page_number"
     chapters = "_chapters"
     podcast_setting = "_podcast_setting"
+    podcast_script = "_podcast_script"
 
 
 class ChapterPageSessionState(StrEnum):

@@ -20,6 +20,11 @@ def build_text_directory(filename: str) -> Path:
     return base_path / "texts"
 
 
+def build_script_directory(filename: str) -> Path:
+    base_path = build_book_directory(filename)
+    return base_path / "scripts"
+
+
 def resolve_image_path(filename: str, page_number: int) -> Path:
     image_dir = build_image_directory(filename)
     return image_dir / f"page_{page_number:03d}.png"
@@ -28,3 +33,8 @@ def resolve_image_path(filename: str, page_number: int) -> Path:
 def resolve_text_path(filename: str, page_number: int) -> Path:
     text_dir = build_text_directory(filename)
     return text_dir / f"page_{page_number:03d}.txt"
+
+
+def resolve_script_path(filename: str, chapter_num: int) -> Path:
+    script_dir = build_script_directory(filename)
+    return script_dir / f"chapter_{chapter_num:03d}_script.txt"

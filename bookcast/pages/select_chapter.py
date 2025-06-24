@@ -4,19 +4,9 @@ from bookcast.path_resolver import resolve_text_path, resolve_image_path
 from bookcast.page import Rooter
 from bookcast.session_state import SessionState as State
 from bookcast.session_state import ChapterPageSessionState as PState
-
-from pydantic import BaseModel
+from bookcast.models import Chapters, ChapterConfig
 
 logger = get_logger(__name__)
-
-
-class ChapterConfig(BaseModel):
-    page_number: int
-
-
-class Chapters(BaseModel):
-    specified_max_chapter: int = 1
-    chapters: dict[int, ChapterConfig] = {}
 
 
 def initialize():

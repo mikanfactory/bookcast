@@ -6,8 +6,11 @@ from PIL import Image
 from google import genai
 from google.genai import types
 from bookcast.config import GEMINI_API_KEY
-from bookcast.path_resolver import build_text_directory, build_downloads_path
-
+from bookcast.path_resolver import (
+    build_text_directory,
+    build_downloads_path,
+    resolve_text_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +53,7 @@ class GeminiOCR:
         text_dir = build_text_directory(filename)
         text_dir.mkdir(parents=True, exist_ok=True)
 
-        text_path = text_dir / f"page_{page_num:03d}.txt"
+        text_path = resolve_text_path(filename, page_num)
         with open(text_path, "w") as f:
             f.write(extracted_text)
 
