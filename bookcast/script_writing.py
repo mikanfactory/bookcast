@@ -62,13 +62,15 @@ def resolve_chapter_min_max_page(
     return pairs
 
 
-def build_prompt(podcast_setting: PodcastSetting) -> str:
-    prompt = f"""
-    You are a script writer for a podcast. The podcast is about {podcast_setting.topic}.
-    The target audience is {podcast_setting.target_audience}.
-    The tone of the podcast should be {podcast_setting.tone}.
-    The script should be engaging and informative.
-    """
+def build_prompt() -> str:
+    prompt = (
+        "与えられた文章をもとに、ポッドキャストの台本を作成してください。"
+        "ポッドキャストのMCは2人います。1人目の名前は「ジェームズ」で、穏やかで思慮深い人物です。"
+        "2人目の名前は「アリス」で、元気で明るい人物です。"
+        "扱うトピックは難しいですが、視聴者は専門知識を持っているため、難しいまま理解できます。"
+        "与えられた文章をなるべく端折らず、会話で掘り下げていく形で台本を作成してください。"
+        "ポッドキャストの長さは約40分です。"
+    )
     return prompt
 
 
@@ -77,32 +79,67 @@ async def combine(
 ):
     writer = GeminiScriptWriter(GEMINI_API_KEY)
 
-    prompt = build_prompt(podcast_setting)
+    prompt = build_prompt()
 
     tasks = []
     for n, base_text in enumerate(base_texts):
         chapter_num = n + 1
         tasks.append(writer.generate_script(filename, chapter_num, base_text, prompt))
 
+    await asyncio.gather(*tasks)
 
-def generate_script(
-    filename: str,
-    max_page_number: int,
-    chapters: Chapters,
-    podcast_setting: PodcastSetting,
-):
-    base_texts = []
+
+# async def generate_script(
+#     filename: str,
+#     max_page_number: int,
+#     chapters: Chapters,
+#     podcast_setting: PodcastSetting,
+# ):
+#     base_texts = []
+#
+#     text_dir = build_text_directory(filename)
+#     pairs = resolve_chapter_min_max_page(max_page_number, chapters)
+#     for pair in pairs:
+#         start_page, end_page = pair
+#         text = ""
+#         for page_num in range(start_page, end_page + 1):
+#             text_path = text_dir / f"page_{page_num:03d}.txt"
+#             with open(text_path, "r", encoding="utf-8") as f:
+#                 text += f.read() + "\n"
+#
+#         base_texts.append(text)
+#
+#     asyncio.run(combine(filename, base_texts, podcast_setting))
+#
+
+async def __generate_script():
+    filename = "プログラマー脳.pdf"
+    start_page, end_page = 58, 72
 
     text_dir = build_text_directory(filename)
-    pairs = resolve_chapter_min_max_page(max_page_number, chapters)
-    for pair in pairs:
-        start_page, end_page = pair
-        text = ""
-        for page_num in range(start_page, end_page + 1):
-            text_path = text_dir / f"page_{page_num:03d}.txt"
-            with open(text_path, "r", encoding="utf-8") as f:
-                text += f.read() + "\n"
 
-        base_texts.append(text)
+    base_texts = []
+    text = "文章は「プログラマー脳」の第3章です。\n"
+    for page_num in range(start_page, end_page + 1):
+        text_path = text_dir / f"page_{page_num:03d}.txt"
+        with open(text_path, "r", encoding="utf-8") as f:
+            text += f.read() + "\n"
 
-    asyncio.run(combine(filename, base_texts, podcast_setting))
+    base_texts.append(text)
+
+    podcast_setting = PodcastSetting(
+        num_of_people=2,
+        personality1_name="ジェームズ",
+        personality2_name="アリス",
+        length=10,
+        prompt=build_prompt()
+    )
+    await combine(filename, base_texts, podcast_setting)
+
+
+def main():
+    asyncio.run(__generate_script())
+
+
+if __name__ == "__main__":
+    main()

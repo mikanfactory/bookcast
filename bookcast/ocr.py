@@ -1,6 +1,7 @@
 import io
 import asyncio
 import logging
+
 from pdf2image import convert_from_path
 from PIL import Image
 from google import genai
@@ -26,7 +27,11 @@ class GeminiOCR:
         image_data = buffer.getvalue()
 
         prompt = (
-            "この画像から日本語と英語のテキストを抽出してください。章のタイトルや見出しを特に注意深く読み取ってください。テキストのみを返してください。",
+            "この画像に含まれる文字を抽出してください。"
+            "構造に沿って文章を抽出してください。タイトルやページ番号などは含めないようにしてください。"
+            "また抽出した文字のみを出力してください。"
+            "読み取れなければ読み取れない理由を答えてください。"
+            "わからないことがあれば質問してください。"
         )
 
         response = self.client.aio.models.generate_content(
@@ -38,6 +43,9 @@ class GeminiOCR:
                 ),
                 prompt,
             ],
+            config=types.GenerateContentConfig(
+                temperature=0.01
+            )
         )
         resp = await response
         extracted_text = resp.text.strip()
@@ -73,3 +81,25 @@ async def combine(filename: str):
 
 def extract_text(filename: str):
     asyncio.run(combine(filename))
+
+
+async def __combine():
+    filename = "プログラマー脳.pdf"
+    start_page, end_page = 58, 72
+
+    ocr = GeminiOCR(GEMINI_API_KEY)
+    pdf_path = build_downloads_path(filename)
+
+    images = convert_from_path(pdf_path)
+
+    tasks = []
+    for n, image in enumerate(images):
+        if start_page <= n + 1 <= end_page:
+            extracted_text = await ocr.extract_text(filename, n + 1, image)
+            print(f"Page {n + 1} extracted text: {extracted_text}")
+
+    await asyncio.gather(*tasks)
+
+
+def main():
+    asyncio.run(__combine())
