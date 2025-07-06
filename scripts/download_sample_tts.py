@@ -31,25 +31,49 @@ def generate_tts(voice_name: str):
                     )
                 )
             ),
-        )
+        ),
     )
 
     data = response.candidates[0].content.parts[0].inline_data.data
 
-    file_name = f'{voice_name}.wav'
-    wave_file(file_name, data) # Saves the file to current directory
-
+    file_name = f"{voice_name}.wav"
+    wave_file(file_name, data)  # Saves the file to current directory
 
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 voice_names = [
-    "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi", "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi", "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat"
+    "Zephyr",
+    "Puck",
+    "Charon",
+    "Kore",
+    "Fenrir",
+    "Leda",
+    "Orus",
+    "Aoede",
+    "Callirrhoe",
+    "Autonoe",
+    "Enceladus",
+    "Iapetus",
+    "Umbriel",
+    "Algieba",
+    "Despina",
+    "Erinome",
+    "Algenib",
+    "Rasalgethi",
+    "Laomedeia",
+    "Achernar",
+    "Alnilam",
+    "Schedar",
+    "Gacrux",
+    "Pulcherrima",
+    "Achird",
+    "Zubenelgenubi",
+    "Vindemiatrix",
+    "Sadachbia",
+    "Sadaltager",
+    "Sulafat",
 ]
 
 for voice_name in voice_names:
     print(f"Generating TTS for voice: {voice_name}")
     generate_tts(voice_name)
-
-
-
-
