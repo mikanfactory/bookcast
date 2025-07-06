@@ -71,7 +71,7 @@ wheels = [
 [[package]]
 name = "bookcast"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "google-genai" },
     { name = "pdf2image" },
@@ -84,7 +84,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "bookcast" },
     { name = "freezegun" },
     { name = "ipython" },
     { name = "pytest" },
@@ -107,7 +106,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "bookcast", virtual = "." },
     { name = "freezegun", specifier = ">=1.5.2" },
     { name = "ipython", specifier = ">=9.3.0" },
     { name = "pytest", specifier = ">=8.4.1" },
