@@ -1,9 +1,10 @@
 import logging
 from typing import List
-from PIL import Image
-from pdf2image import convert_from_path
-from bookcast.path_resolver import build_downloads_path, build_image_directory
 
+from pdf2image import convert_from_path
+from PIL import Image
+
+from bookcast.path_resolver import build_downloads_path, build_image_directory
 
 logger = logging.getLogger(__name__)
 

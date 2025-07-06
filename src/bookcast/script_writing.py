@@ -1,19 +1,17 @@
-import logging
 import asyncio
+import logging
 from itertools import pairwise
-
 
 from google import genai
 from google.genai import types
 
 from bookcast.config import GEMINI_API_KEY
+from bookcast.models import Chapters, PodcastSetting
 from bookcast.path_resolver import (
-    build_text_directory,
     build_script_directory,
+    build_text_directory,
     resolve_script_path,
 )
-from bookcast.models import Chapters, PodcastSetting
-
 
 SCRIPT_WRITING_MODEL = "gemini-2.0-flash"
 

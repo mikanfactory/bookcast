@@ -1,6 +1,6 @@
-import streamlit as st
-
 from enum import StrEnum
+
+import streamlit as st
 
 
 class PageName(StrEnum):

@@ -1,119 +1,107 @@
 import streamlit as st
 from streamlit.logger import get_logger
-from bookcast.path_resolver import resolve_text_path, resolve_image_path
+
 from bookcast.page import Rooter
-from bookcast.session_state import SessionState as State
+from bookcast.services import get_service_manager
 from bookcast.session_state import ChapterPageSessionState as PState
-from bookcast.models import Chapters, ChapterConfig
 
 logger = get_logger(__name__)
 
 
-def initialize():
-    # filename = st.session_state[State.filename]
-    # max_page_number = st.session_state[State.max_page_number]
+def initialize_session(services):
+    """Initialize session state and return current values."""
+    # Get session values with fallback for debugging
+    filename = services.session.get_filename()
+    if not filename:
+        # デバッグ用のフォールバック
+        filename = "2506.05345.pdf"
+        services.session.set_filename(filename)
 
-    # デバッグ用
-    filename = st.session_state.get(State.filename, "2506.05345.pdf")
-    max_page_number = st.session_state.get(State.max_page_number, 23)
+    max_page_number = services.session.get_max_page_number()
+    if not max_page_number:
+        # デバッグ用のフォールバック
+        max_page_number = 23
+        services.session.set_max_page_number(max_page_number)
 
-    if not st.session_state.get(PState.current_page):
-        st.session_state[PState.current_page] = 1
+    # Initialize session if needed
+    services.session.initialize_session(filename, max_page_number)
 
-    if not st.session_state.get(State.chapters):
-        st.session_state[State.chapters] = Chapters()
-
-    current_page = st.session_state[PState.current_page]
-    chapters = st.session_state[State.chapters]
+    current_page = services.session.get_current_page()
+    chapters = services.session.get_chapters()
 
     return filename, current_page, max_page_number, chapters
 
 
-def update_chapter(chapters: Chapters, current_page: int):
+def update_chapter(services, current_page: int):
+    """Update chapter configuration when user selects a chapter."""
     selected_chapter = st.session_state[PState.chapter_select]
-    config = ChapterConfig(page_number=current_page)
+    chapters = services.session.get_chapters()
 
-    chapters.chapters[selected_chapter] = config
-    chapters.specified_max_chapter = max(
-        chapters.specified_max_chapter, selected_chapter
-    )
+    # Add chapter using service
+    result = services.chapter.add_chapter(chapters, selected_chapter, current_page)
 
-    st.session_state[State.chapters] = chapters
+    if result.success:
+        # Update session state
+        updated_chapters = result.data
+        services.session.set_chapters(updated_chapters)
+        logger.info(f"Added chapter {selected_chapter} at page {current_page}")
+    else:
+        st.error(f"Failed to add chapter: {result.error}")
 
 
-def increment_page(current_page: int, max_page_number: int):
+def increment_page(services, current_page: int, max_page_number: int):
+    """Move to the next page."""
     if current_page < max_page_number:
-        st.session_state[PState.current_page] = current_page + 1
+        services.session.set_current_page(current_page + 1)
 
 
-def decrement_page(current_page: int):
-    if current_page >= 1:
-        st.session_state[PState.current_page] = current_page - 1
+def decrement_page(services, current_page: int):
+    """Move to the previous page."""
+    if current_page > 1:
+        services.session.set_current_page(current_page - 1)
 
 
-def validate_chapter_config(chapters: Chapters) -> bool:
-    specified_max_chapter = chapters.specified_max_chapter
-    if chapters.chapters == {}:
-        st.error("章が選択されていません。1つ以上選択してください。")
-        return False
-
-    if len(chapters.chapters) < specified_max_chapter:
-        not_filled_chapters = []
-        expected = range(1, specified_max_chapter)
-        actual = chapters.chapters.keys()
-        for c in expected:
-            if c not in actual:
-                not_filled_chapters.append(c)
-
-        text = "章の設定が不完全です。すべての章を設定してください。\n\n"
-        text += "設定されていない章: " + ", ".join(map(str, not_filled_chapters))
-        st.error(text)
-        return False
-
-    specified_pages = set()
-    duplicates = []
-    for chapter_num, config in chapters.chapters.items():
-        if config.page_number not in specified_pages:
-            specified_pages.add(config.page_number)
-        else:
-            duplicates.append(config.page_number)
-
-    if duplicates:
-        text = "ページ番号の重複があります。以下のページ番号が重複しています:\n\n"
-        text += ", ".join(map(str, duplicates))
-        st.error(text)
-        return False
-
-    return True
-
-
-def main():
-    filename, current_page, max_page_number, chapters = initialize()
-    st.write("select chapter page")
-
+def display_page_content(services, filename: str, current_page: int):
+    """Display image and text content for the current page."""
     col1, col2 = st.columns(2)
+
     with col1:
-        image_path = resolve_image_path(filename, current_page)
-        st.image(image_path)
+        # Get image using service
+        image_result = services.file.get_image_path(filename, current_page)
+        if image_result.success:
+            st.image(image_result.data["image_path"])
+        else:
+            st.error(f"Failed to load image: {image_result.error}")
 
     with col2:
         with st.container(height=650):
-            text_path = resolve_text_path(filename, current_page)
-            with open(text_path, "r") as f:
-                text = f.read()
+            # Get text content using service
+            text_result = services.file.get_text_content(filename, current_page)
+            if text_result.success:
+                st.write(text_result.data["content"])
+            else:
+                st.error(f"Failed to load text: {text_result.error}")
 
-            st.write(text)
 
+def display_navigation_controls(
+    services, current_page: int, max_page_number: int, chapters
+):
+    """Display navigation and chapter selection controls."""
     with st.container():
         left, center, right = st.columns(3, vertical_alignment="bottom")
+
         with left:
-            st.button("前のページ", on_click=decrement_page, args=(current_page,))
+            st.button(
+                "前のページ",
+                on_click=decrement_page,
+                args=(services, current_page),
+            )
 
         with center:
             st.button(
                 "次のページ",
                 on_click=increment_page,
-                args=(current_page, max_page_number),
+                args=(services, current_page, max_page_number),
             )
 
         with right:
@@ -124,26 +112,57 @@ def main():
                 label_visibility="hidden",
                 on_change=update_chapter,
                 key=PState.chapter_select,
-                args=(chapters, current_page),
+                args=(services, current_page),
                 index=None,
                 placeholder="章を選択",
             )
 
+
+def display_chapter_summary(services, chapters):
+    """Display summary of configured chapters."""
     with st.expander("設定済みの章", expanded=False):
-        if chapters.chapters:
-            text = ""
-            for k, v in chapters.chapters.items():
-                text += f"第{k}章: ページ {v.page_number}\n\n\n"
-
-            st.write(text)
+        summary_result = services.chapter.get_chapter_summary(chapters)
+        if summary_result.success:
+            st.write(summary_result.data)
         else:
-            st.write("設定された章はありません。")
+            st.error(f"Failed to get chapter summary: {summary_result.error}")
 
+
+def validate_and_proceed(services, chapters):
+    """Validate chapter configuration and proceed to next page."""
     finish_chapter_setting = st.button("設定完了")
     if finish_chapter_setting:
-        if validate_chapter_config(chapters):
+        validation_result = services.chapter.validate_chapter_config(chapters)
+
+        if validation_result.success:
+            logger.info("Chapter configuration validated successfully")
             st.switch_page(Rooter.podcast_setting_page())
+        else:
+            st.error(validation_result.error)
 
 
-if __name__ == "__main__":
-    main()
+def main():
+    """Main function for the chapter selection page."""
+    st.write("select chapter page")
+
+    # Get service manager
+    services = get_service_manager()
+
+    # Initialize session and get current state
+    filename, current_page, max_page_number, chapters = initialize_session(services)
+
+    # Display page content (image and text)
+    display_page_content(services, filename, current_page)
+
+    # Display navigation controls
+    display_navigation_controls(services, current_page, max_page_number, chapters)
+
+    # Display chapter summary
+    display_chapter_summary(services, chapters)
+
+    # Validate and proceed
+    validate_and_proceed(services, chapters)
+
+
+# Execute main function directly for Streamlit
+main()
