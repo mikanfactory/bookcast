@@ -7,5 +7,10 @@
       "Bash(pkill:*)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "context7",
+    "jetbrains",
+    "brave-search"
+  ]
 }
