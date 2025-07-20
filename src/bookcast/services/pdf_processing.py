@@ -6,10 +6,15 @@ import asyncio
 import io
 from typing import Optional
 
-from google import genai
-from google.genai import types
+import base64
 from pdf2image import convert_from_path
 from PIL import Image
+
+from pydantic import BaseModel, Field
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph import StateGraph, END
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.path_resolver import (
@@ -21,13 +26,120 @@ from bookcast.path_resolver import (
 )
 from bookcast.services.base import BaseService, ServiceResult
 
+class OCRState(BaseModel):
+    base64_image: str = Field()
+    extracted_string: Optional[str]= Field(default=None)
+    error_message: Optional[str] = Field(default=None)
+    error_code: Optional[str] = Field(default=None)
+    is_valid: Optional[bool] = Field(default=None, description="True if the OCR result is valid, False if it contains errors.")
+
+
+class ImageProcessingResult(BaseModel):
+    extracted_string: str = Field()
+    error_message: Optional[str] = Field(default=None)
+    error_code: Optional[str] = Field(default=None)
+
+
+class JudgmentResult(BaseModel):
+    is_valid: bool = Field(description="True if the OCR result is valid, False if it contains errors.")
+    error_message: Optional[str] = Field(default=None, description="Error message if the result is invalid.")
+
+
+class OCRExecutorAgent(object):
+    def __init__(self, llm):
+        self.llm = llm
+
+    async def run(self, state: OCRState) -> ImageProcessingResult:
+        prompt_text = (
+            "この画像に含まれる文字を抽出してください。"
+            "章や節のタイトルは含めてください。一方でページ番号などは含めないようにしてください。"
+            "また抽出できた文字のみを出力してください。"
+            "次のような状況があります:\n"
+            "1. 画像に文字が含まれない場合"
+            "2. 文字が歪んでいる、文字が薄い等で文字が読み取れない場合"
+            "画像のうち1/4以上が読み取れない、もしくは文字が含まれない場合は、上のエラーコードとエラーメッセージを返してください。"
+            "部分的に読み取れなくても、読み取れる部分がある場合は、読み取れる部分の文字列を返してください。"
+        )
+
+        message = ChatPromptTemplate(
+            ("human", [
+                {"type": "text", "text": prompt_text},
+                {
+                    "type": "image",
+                    "source_type": f"base64",
+                    "data": state.base64_image,
+                    "mime_type": "image/png"
+                }
+            ])
+        )
+
+        chain = message | self.llm.with_structured_output(ImageProcessingResult)
+        return await chain.ainvoke({})
+
+
+class OCRResultGuardian(object):
+    def __init__(self, llm):
+        self.llm = llm
+
+    async def run(self, state: OCRState)-> bool:
+        if state.error_code is None:
+            return True
+
+        prompt_text = (
+            "あなたはOCR結果の検証を行うAIです。"
+            "この画像はOCR処理をしたが文字が読み取れなかった画像です。"
+            "エラーメッセージを確認し、その通りであればtrueを返してください。"
+            "もし正常な文字列が含まれている場合はfalseを返し、理由も教えて下さい。"
+            "エラーメッセージ:{error_message}"
+        )
+
+        message = ChatPromptTemplate(
+            ("human", [
+                {"type": "text", "text": prompt_text},
+                {
+                    "type": "image",
+                    "source_type": f"base64",
+                    "data": state.base64_image,
+                    "mime_type": "image/png"
+                },
+                {"type": "structured", "data": state.ocr_result}
+            ])
+        )
+
+        chain = message | self.llm.with_structured_output(JudgmentResult)
+        return await chain.ainvoke({"error_message": state.error_message})
+
+
+class OCROrchestrator(object):
+    def __init__(self, llm):
+        self.llm = llm
+        ocr_agent = OCRExecutorAgent(llm)
+        guardian = OCRResultGuardian(llm)
+
+        state = StateGraph(OCRState)
+        state.add_node("ocr_execution", ocr_agent)
+        state.add_node("result_judgment", guardian)
+
+        state.set_entry_point("ocr_execution")
+        state.add_edge("ocr_execution", "result_judgment")
+        state.add_conditional_edges(
+            "result_judgment",
+            lambda state: state.is_valid,
+            {True: END, False: "ocr_execution"}
+        )
+
+        self.compiled = state.compile()
+
+    async def run(self, base64_image: str) -> ImageProcessingResult:
+        state = OCRState(base64_image=base64_image)
+        return await self.compiled.ainvoke(state)
+
 
 class PDFProcessingService(BaseService):
     """Service for handling PDF processing operations."""
 
     def __init__(self, config: Optional[dict] = None):
         super().__init__(config)
-        self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
         self.semaphore = asyncio.Semaphore(10)
 
     def convert_pdf_to_images(self, filename: str) -> ServiceResult:
@@ -68,7 +180,7 @@ class PDFProcessingService(BaseService):
 
     async def _extract_text_from_image(self, image: Image.Image) -> str:
         """
-        Extract text from a single image using Gemini OCR.
+        Extract text from a single image using Gemini OCR via LangChain.
 
         Args:
             image: PIL Image object
@@ -76,32 +188,25 @@ class PDFProcessingService(BaseService):
         Returns:
             Extracted text as string
         """
+
+        # Convert PIL Image to base64
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         image_data = buffer.getvalue()
+        base64_image = base64.b64encode(image_data).decode('utf-8')
 
-        prompt = (
-            "この画像に含まれる文字を抽出してください。"
-            "構造に沿って文章を抽出してください。タイトルやページ番号などは含めないようにしてください。"
-            "また抽出した文字のみを出力してください。"
-            "読み取れなければ読み取れない理由を答えてください。"
-            "わからないことがあれば質問してください。"
-        )
 
-        response = self.gemini_client.aio.models.generate_content(
+        llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
-            contents=[
-                types.Part.from_bytes(
-                    data=image_data,
-                    mime_type="image/png",
-                ),
-                prompt,
-            ],
-            config=types.GenerateContentConfig(temperature=0.01),
+            google_api_key=GEMINI_API_KEY,
+            temperature=0.01
         )
 
-        resp = await response
-        return resp.text.strip()
+        ocr_agent = OCRExecutorAgent(llm)
+
+        # Process the message
+        response = await ocr_agent.run(base64_image)
+        return response.content.strip()
 
     async def _extract_and_save_text(
         self, filename: str, page_num: int, image: Image.Image

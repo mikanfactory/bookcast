@@ -46,3 +46,6 @@ class ServiceResult:
     def failure(cls, error: str):
         """Create a failed result."""
         return cls(success=False, error=error)
+
+    def __repr__(self):
+        return f"ServiceResult(success={self.success}, data={self.data}, error={self.error})"
