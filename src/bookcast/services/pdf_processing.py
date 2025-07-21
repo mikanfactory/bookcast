@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 from typing import Optional, Annotated
 
 import base64
@@ -25,8 +26,9 @@ from bookcast.services.base import BaseService, ServiceResult
 
 
 class OCRState(BaseModel):
-    base64_image: str = Field(default=None)
-    extracted_string: Optional[str] = Field(default="")
+    page_number: int = Field(..., description="画像のページ番号")
+    base64_image: str = Field(default=None, description="対象の画像")
+    extracted_string: Optional[str] = Field(default="", description="画像から読み取れた文字列")
     error_message: Optional[str] = Field(default="")
     error_code: Optional[str] = Field(default="")
     is_valid: Optional[bool] = Field(
@@ -36,9 +38,9 @@ class OCRState(BaseModel):
 
 
 class ImageProcessingResult(BaseModel):
-    extracted_string: str = Field(default=None)
-    error_message: Optional[str] = Field(default="")
-    error_code: Optional[str] = Field(default="")
+    extracted_string: str = Field(default="", description="画像から読み取れた文字列")
+    error_message: Optional[str] = Field(default="", description="エラーメッセージ")
+    error_code: Optional[str] = Field(default="", description="")
 
 
 class JudgmentResult(BaseModel):
@@ -93,9 +95,6 @@ class OCRResultGuardian(object):
         self.llm = llm
 
     async def run(self, state: OCRState) -> dict:
-        if state.error_code == "":
-            return {"is_valid": True}
-
         prompt_text = (
             "あなたはOCR結果の検証を行うAIです。"
             "この画像はOCR処理をしたが文字が読み取れなかった画像です。"
@@ -137,10 +136,14 @@ class OCROrchestrator(object):
 
     async def _execute_ocr(self, state: OCRState):
         result = await self.ocr_agent.run(state)
+        if result["error_code"] != "":
+            print(json.dumps(result))
         return result
 
     async def _judge_result(self, state: OCRState):
         result = await self.guardian.run(state)
+        if result["error_message"] != "":
+            print(json.dumps(result))
         return result
 
     def _create_graph(self):
@@ -158,14 +161,12 @@ class OCROrchestrator(object):
 
         return graph.compile()
 
-    async def run(self, base64_image: str) -> ImageProcessingResult:
-        state = OCRState(base64_image=base64_image)
+    async def run(self, page_number: int, base64_image: str) -> ImageProcessingResult:
+        state = OCRState(page_number=page_number, base64_image=base64_image)
         return await self.graph.ainvoke(state)
 
 
 class PDFProcessingService(BaseService):
-    """Service for handling PDF processing operations."""
-
     def __init__(self, config: Optional[dict] = None):
         super().__init__(config)
         self.semaphore = asyncio.Semaphore(10)
@@ -179,19 +180,19 @@ class PDFProcessingService(BaseService):
 
         images = convert_from_path(pdf_path)
 
-        # Save images to disk
         image_dir = build_image_directory(filename)
         image_dir.mkdir(parents=True, exist_ok=True)
 
         for i, image in enumerate(images):
             page_num = i + 1
-            image_path = resolve_image_path(filename, page_num)
+            image_path = resolve_image_path(filename, page_number)
             image.save(image_path, "PNG")
 
         self._log_info(f"Successfully converted {len(images)} pages to images")
         return ServiceResult.success(images)
 
-    async def _extract_text_from_image(self, image: Image.Image) -> str:
+
+    async def _extract_text_from_image(self, page_number: int, image: Image.Image) -> str:
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         image_data = buffer.getvalue()
@@ -203,20 +204,19 @@ class PDFProcessingService(BaseService):
 
         ocr_agent = OCROrchestrator(llm)
 
-        response = await ocr_agent.run(base64_image)
+        response = await ocr_agent.run(page_number, base64_image)
         return response['extracted_string']
 
     async def _extract_and_save_text(
-        self, filename: str, page_num: int, image: Image.Image
+        self, filename: str, page_number: int, image: Image.Image
     ) -> str:
         async with self.semaphore:
-            extracted_text = await self._extract_text_from_image(image)
+            extracted_text = await self._extract_text_from_image(page_number, image)
 
-        # Save text to file
         text_dir = build_text_directory(filename)
         text_dir.mkdir(parents=True, exist_ok=True)
 
-        text_path = resolve_text_path(filename, page_num)
+        text_path = resolve_text_path(filename, page_number)
         with open(text_path, "w", encoding="utf-8") as f:
             f.write(extracted_text)
 
@@ -231,7 +231,6 @@ class PDFProcessingService(BaseService):
 
         images = convert_from_path(pdf_path)
 
-        # Extract text from all images concurrently
         tasks = [
             self._extract_and_save_text(filename, i + 1, image)
             for i, image in enumerate(images)
