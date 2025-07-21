@@ -24,45 +24,59 @@ from bookcast.path_resolver import (
 )
 from bookcast.services.base import BaseService, ServiceResult
 
+MAX_RETRY_COUNT = 3
+
 
 class OCRState(BaseModel):
     page_number: int = Field(..., description="画像のページ番号")
     base64_image: str = Field(default=None, description="対象の画像")
-    extracted_string: Optional[str] = Field(default="", description="画像から読み取れた文字列")
-    error_message: Optional[str] = Field(default="")
-    error_code: Optional[str] = Field(default="")
-    is_valid: Optional[bool] = Field(
-        default=False,
-        description="True if the OCR result is valid, False if it contains errors.",
+    extracted_string: str = Field(default="", description="画像から読み取れた文字列")
+    feedback_message: Annotated[list[str], operator.add] = Field(
+        default=[], description="読み取り結果に対するフィードバック"
     )
+    retry_count: int = Field(default=0, description="再実行回数")
+    is_valid: bool = Field(default=False, description="適切か否か")
 
 
 class ImageProcessingResult(BaseModel):
-    extracted_string: str = Field(default="", description="画像から読み取れた文字列")
-    error_message: Optional[str] = Field(default="", description="エラーメッセージ")
-    error_code: Optional[str] = Field(default="", description="")
+    extracted_string: str = Field(..., description="画像から読み取れた文字列")
 
 
 class JudgmentResult(BaseModel):
-    is_valid: bool = Field()
-    error_message: Optional[str] = Field(default="")
+    is_valid: bool = Field(
+        ..., description="OCRの結果が適切か否か。適切な場合はtrue。不適切ならfalse"
+    )
+    feedback_message: str = Field(..., description="読み取り結果に対するフィードバック")
+
+
+def format_reflections(reflections: list[str]) -> str:
+    acc = ""
+    for i, reflection in enumerate(reflections):
+        acc += f"{i + 1}: {reflection}"
+
+    return acc
 
 
 class OCRExecutorAgent(object):
     def __init__(self, llm):
         self.llm = llm
 
-    async def run(self, state: OCRState) -> dict:
+    async def run(self, state: OCRState) -> ImageProcessingResult:
         prompt_text = (
             "この画像に含まれる文字を抽出してください。"
-            "章や節のタイトルは含めてください。一方でページ番号などは含めないようにしてください。"
-            "また抽出できた文字のみを出力してください。"
-            "次のような状況があります:\n"
-            "1. 画像に文字が含まれない場合"
-            "2. 文字が歪んでいる、文字が薄い等で文字が読み取れない場合"
-            "画像のうち1/4以上が読み取れない、もしくは文字が含まれない場合は、上のエラーコードとエラーメッセージを返してください。"
-            "部分的に読み取れなくても、読み取れる部分がある場合は、読み取れる部分の文字列を返してください。"
+            "抽出したいもの:"
+            "- 章や節のタイトル"
+            "- 本文"
+            "抽出しなくていいもの:"
+            "- 脚注などの注"
+            "- 図や図に含まれる文章"
+            "- キャプション"
+            "- ページ番号"
         )
+
+        if state.retry_count > 0:
+            reflection_text = format_reflections(state.feedback_message)
+            prompt_text += f"\n\n実行する際に、以下の過去の振り返りを考慮すること。\n{reflection_text}"
 
         message = ChatPromptTemplate(
             [
@@ -82,25 +96,30 @@ class OCRExecutorAgent(object):
         )
 
         chain = message | self.llm.with_structured_output(ImageProcessingResult)
-        result: ImageProcessingResult = await chain.ainvoke({})
-        return {
-            "extracted_string": result.extracted_string,
-            "error_code": result.error_code,
-            "error_message": result.error_message,
-        }
+        return await chain.ainvoke({})
 
 
 class OCRResultGuardian(object):
     def __init__(self, llm):
         self.llm = llm
 
-    async def run(self, state: OCRState) -> dict:
+    async def run(self, state: OCRState) -> JudgmentResult:
         prompt_text = (
-            "あなたはOCR結果の検証を行うAIです。"
-            "この画像はOCR処理をしたが文字が読み取れなかった画像です。"
-            "エラーメッセージを確認し、その通りであればtrueを返してください。"
-            "もし正常な文字列が含まれている場合はfalseを返し、理由も教えて下さい。"
-            "エラーメッセージ:{error_message}"
+            "あなたはOCRの結果の検証を行うAIです。"
+            "このOCRの結果は次のものを対象としています。"
+            "抽出したいもの:"
+            "- 章や節のタイトル"
+            "- 本文"
+            "抽出しなくていいもの:"
+            "- 脚注などの注"
+            "- 図や図に含まれる文章"
+            "- キャプション"
+            "- ページ番号"
+            "あなたはまず画像から文章を読み取り、その後に受け取った文章と照らし合わせてください。"
+            "適切であればtrueを返してください。"
+            "不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。"
+            "またフィードバックにはどこが読み取れていないか、具体例を入れるようにしてください。"
+            f"OCR結果: {state.extracted_string}"
         )
 
         message = ChatPromptTemplate(
@@ -121,10 +140,7 @@ class OCRResultGuardian(object):
         )
 
         chain = message | self.llm.with_structured_output(JudgmentResult)
-        result: JudgmentResult = await chain.ainvoke(
-            {"error_message": state.error_message}
-        )
-        return {"is_valid": result.is_valid, "error_message": result.error_message}
+        return await chain.ainvoke({"extracted_string": state.extracted_string})
 
 
 class OCROrchestrator(object):
@@ -136,15 +152,28 @@ class OCROrchestrator(object):
 
     async def _execute_ocr(self, state: OCRState):
         result = await self.ocr_agent.run(state)
-        if result["error_code"] != "":
-            print(json.dumps(result))
-        return result
+        return {
+            "extracted_string": result.extracted_string,
+        }
 
     async def _judge_result(self, state: OCRState):
         result = await self.guardian.run(state)
-        if result["error_message"] != "":
-            print(json.dumps(result))
-        return result
+        if result.is_valid:
+            return {"is_valid": True}
+        else:
+            return {
+                "is_valid": False,
+                "retry_count": state.retry_count + 1,
+                "feedback_message": [result.feedback_message],
+            }
+
+    def _should_retry_or_continue(self, state: OCRState):
+        if state.is_valid:
+            return True
+        elif state.retry_count < MAX_RETRY_COUNT:
+            return False
+        else:
+            return True
 
     def _create_graph(self):
         graph = StateGraph(OCRState)
@@ -155,7 +184,7 @@ class OCROrchestrator(object):
         graph.add_edge("ocr_execution", "result_judgment")
         graph.add_conditional_edges(
             "result_judgment",
-            lambda state: state.is_valid,
+            self._should_retry_or_continue,
             {True: END, False: "ocr_execution"},
         )
 
@@ -184,15 +213,16 @@ class PDFProcessingService(BaseService):
         image_dir.mkdir(parents=True, exist_ok=True)
 
         for i, image in enumerate(images):
-            page_num = i + 1
+            page_number = i + 1
             image_path = resolve_image_path(filename, page_number)
             image.save(image_path, "PNG")
 
         self._log_info(f"Successfully converted {len(images)} pages to images")
         return ServiceResult.success(images)
 
-
-    async def _extract_text_from_image(self, page_number: int, image: Image.Image) -> str:
+    async def _extract_text_from_image(
+        self, page_number: int, image: Image.Image
+    ) -> str:
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         image_data = buffer.getvalue()
@@ -205,7 +235,7 @@ class PDFProcessingService(BaseService):
         ocr_agent = OCROrchestrator(llm)
 
         response = await ocr_agent.run(page_number, base64_image)
-        return response['extracted_string']
+        return response["extracted_string"]
 
     async def _extract_and_save_text(
         self, filename: str, page_number: int, image: Image.Image
