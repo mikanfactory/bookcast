@@ -1,15 +1,12 @@
-"""
-PDF processing service that handles PDF to image conversion and OCR.
-"""
-
 import asyncio
 import io
-from typing import Optional
+from typing import Optional, Annotated
 
 import base64
 from pdf2image import convert_from_path
 from PIL import Image
 
+import operator
 from pydantic import BaseModel, Field
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -26,30 +23,34 @@ from bookcast.path_resolver import (
 )
 from bookcast.services.base import BaseService, ServiceResult
 
+
 class OCRState(BaseModel):
-    base64_image: str = Field()
-    extracted_string: Optional[str]= Field(default=None)
-    error_message: Optional[str] = Field(default=None)
-    error_code: Optional[str] = Field(default=None)
-    is_valid: Optional[bool] = Field(default=None, description="True if the OCR result is valid, False if it contains errors.")
+    base64_image: str = Field(default=None)
+    extracted_string: Optional[str] = Field(default="")
+    error_message: Optional[str] = Field(default="")
+    error_code: Optional[str] = Field(default="")
+    is_valid: Optional[bool] = Field(
+        default=False,
+        description="True if the OCR result is valid, False if it contains errors.",
+    )
 
 
 class ImageProcessingResult(BaseModel):
-    extracted_string: str = Field()
-    error_message: Optional[str] = Field(default=None)
-    error_code: Optional[str] = Field(default=None)
+    extracted_string: str = Field(default=None)
+    error_message: Optional[str] = Field(default="")
+    error_code: Optional[str] = Field(default="")
 
 
 class JudgmentResult(BaseModel):
-    is_valid: bool = Field(description="True if the OCR result is valid, False if it contains errors.")
-    error_message: Optional[str] = Field(default=None, description="Error message if the result is invalid.")
+    is_valid: bool = Field()
+    error_message: Optional[str] = Field(default="")
 
 
 class OCRExecutorAgent(object):
     def __init__(self, llm):
         self.llm = llm
 
-    async def run(self, state: OCRState) -> ImageProcessingResult:
+    async def run(self, state: OCRState) -> dict:
         prompt_text = (
             "この画像に含まれる文字を抽出してください。"
             "章や節のタイトルは含めてください。一方でページ番号などは含めないようにしてください。"
@@ -62,28 +63,38 @@ class OCRExecutorAgent(object):
         )
 
         message = ChatPromptTemplate(
-            ("human", [
-                {"type": "text", "text": prompt_text},
-                {
-                    "type": "image",
-                    "source_type": f"base64",
-                    "data": state.base64_image,
-                    "mime_type": "image/png"
-                }
-            ])
+            [
+                (
+                    "human",
+                    [
+                        {"type": "text", "text": prompt_text},
+                        {
+                            "type": "image",
+                            "source_type": "base64",
+                            "data": state.base64_image,
+                            "mime_type": "image/png",
+                        },
+                    ],
+                )
+            ]
         )
 
         chain = message | self.llm.with_structured_output(ImageProcessingResult)
-        return await chain.ainvoke({})
+        result: ImageProcessingResult = await chain.ainvoke({})
+        return {
+            "extracted_string": result.extracted_string,
+            "error_code": result.error_code,
+            "error_message": result.error_message,
+        }
 
 
 class OCRResultGuardian(object):
     def __init__(self, llm):
         self.llm = llm
 
-    async def run(self, state: OCRState)-> bool:
-        if state.error_code is None:
-            return True
+    async def run(self, state: OCRState) -> dict:
+        if state.error_code == "":
+            return {"is_valid": True}
 
         prompt_text = (
             "あなたはOCR結果の検証を行うAIです。"
@@ -94,45 +105,62 @@ class OCRResultGuardian(object):
         )
 
         message = ChatPromptTemplate(
-            ("human", [
-                {"type": "text", "text": prompt_text},
-                {
-                    "type": "image",
-                    "source_type": f"base64",
-                    "data": state.base64_image,
-                    "mime_type": "image/png"
-                },
-                {"type": "structured", "data": state.ocr_result}
-            ])
+            [
+                (
+                    "human",
+                    [
+                        {"type": "text", "text": prompt_text},
+                        {
+                            "type": "image",
+                            "source_type": "base64",
+                            "data": state.base64_image,
+                            "mime_type": "image/png",
+                        },
+                    ],
+                )
+            ]
         )
 
         chain = message | self.llm.with_structured_output(JudgmentResult)
-        return await chain.ainvoke({"error_message": state.error_message})
+        result: JudgmentResult = await chain.ainvoke(
+            {"error_message": state.error_message}
+        )
+        return {"is_valid": result.is_valid, "error_message": result.error_message}
 
 
 class OCROrchestrator(object):
     def __init__(self, llm):
         self.llm = llm
-        ocr_agent = OCRExecutorAgent(llm)
-        guardian = OCRResultGuardian(llm)
+        self.ocr_agent = OCRExecutorAgent(llm)
+        self.guardian = OCRResultGuardian(llm)
+        self.graph = self._create_graph()
 
-        state = StateGraph(OCRState)
-        state.add_node("ocr_execution", ocr_agent)
-        state.add_node("result_judgment", guardian)
+    async def _execute_ocr(self, state: OCRState):
+        result = await self.ocr_agent.run(state)
+        return result
 
-        state.set_entry_point("ocr_execution")
-        state.add_edge("ocr_execution", "result_judgment")
-        state.add_conditional_edges(
+    async def _judge_result(self, state: OCRState):
+        result = await self.guardian.run(state)
+        return result
+
+    def _create_graph(self):
+        graph = StateGraph(OCRState)
+        graph.add_node("ocr_execution", self._execute_ocr)
+        graph.add_node("result_judgment", self._judge_result)
+
+        graph.set_entry_point("ocr_execution")
+        graph.add_edge("ocr_execution", "result_judgment")
+        graph.add_conditional_edges(
             "result_judgment",
             lambda state: state.is_valid,
-            {True: END, False: "ocr_execution"}
+            {True: END, False: "ocr_execution"},
         )
 
-        self.compiled = state.compile()
+        return graph.compile()
 
     async def run(self, base64_image: str) -> ImageProcessingResult:
         state = OCRState(base64_image=base64_image)
-        return await self.compiled.ainvoke(state)
+        return await self.graph.ainvoke(state)
 
 
 class PDFProcessingService(BaseService):
@@ -143,85 +171,44 @@ class PDFProcessingService(BaseService):
         self.semaphore = asyncio.Semaphore(10)
 
     def convert_pdf_to_images(self, filename: str) -> ServiceResult:
-        """
-        Convert PDF to images and save them to disk.
+        self._log_info(f"Converting PDF to images: {filename}")
 
-        Args:
-            filename: The name of the PDF file
+        pdf_path = build_downloads_path(filename)
+        if not pdf_path.exists():
+            return ServiceResult.failure(f"PDF file not found: {filename}")
 
-        Returns:
-            ServiceResult with list of Image objects
-        """
-        try:
-            self._log_info(f"Converting PDF to images: {filename}")
+        images = convert_from_path(pdf_path)
 
-            pdf_path = build_downloads_path(filename)
-            if not pdf_path.exists():
-                return ServiceResult.failure(f"PDF file not found: {filename}")
+        # Save images to disk
+        image_dir = build_image_directory(filename)
+        image_dir.mkdir(parents=True, exist_ok=True)
 
-            images = convert_from_path(pdf_path)
+        for i, image in enumerate(images):
+            page_num = i + 1
+            image_path = resolve_image_path(filename, page_num)
+            image.save(image_path, "PNG")
 
-            # Save images to disk
-            image_dir = build_image_directory(filename)
-            image_dir.mkdir(parents=True, exist_ok=True)
-
-            for i, image in enumerate(images):
-                page_num = i + 1
-                image_path = resolve_image_path(filename, page_num)
-                image.save(image_path, "PNG")
-
-            self._log_info(f"Successfully converted {len(images)} pages to images")
-            return ServiceResult.success(images)
-
-        except Exception as e:
-            error_msg = f"Failed to convert PDF to images: {str(e)}"
-            self._log_error(error_msg)
-            return ServiceResult.failure(error_msg)
+        self._log_info(f"Successfully converted {len(images)} pages to images")
+        return ServiceResult.success(images)
 
     async def _extract_text_from_image(self, image: Image.Image) -> str:
-        """
-        Extract text from a single image using Gemini OCR via LangChain.
-
-        Args:
-            image: PIL Image object
-
-        Returns:
-            Extracted text as string
-        """
-
-        # Convert PIL Image to base64
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         image_data = buffer.getvalue()
-        base64_image = base64.b64encode(image_data).decode('utf-8')
-
+        base64_image = base64.b64encode(image_data).decode("utf-8")
 
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
-            google_api_key=GEMINI_API_KEY,
-            temperature=0.01
+            model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
         )
 
-        ocr_agent = OCRExecutorAgent(llm)
+        ocr_agent = OCROrchestrator(llm)
 
-        # Process the message
         response = await ocr_agent.run(base64_image)
-        return response.content.strip()
+        return response['extracted_string']
 
     async def _extract_and_save_text(
         self, filename: str, page_num: int, image: Image.Image
     ) -> str:
-        """
-        Extract text from image and save to file.
-
-        Args:
-            filename: The name of the PDF file
-            page_num: Page number
-            image: PIL Image object
-
-        Returns:
-            Extracted text
-        """
         async with self.semaphore:
             extracted_text = await self._extract_text_from_image(image)
 
@@ -236,73 +223,43 @@ class PDFProcessingService(BaseService):
         return extracted_text
 
     async def extract_text_from_pdf(self, filename: str) -> ServiceResult:
-        """
-        Extract text from all pages of a PDF using OCR.
+        self._log_info(f"Extracting text from PDF: {filename}")
 
-        Args:
-            filename: The name of the PDF file
+        pdf_path = build_downloads_path(filename)
+        if not pdf_path.exists():
+            return ServiceResult.failure(f"PDF file not found: {filename}")
 
-        Returns:
-            ServiceResult with list of extracted texts
-        """
-        try:
-            self._log_info(f"Extracting text from PDF: {filename}")
+        images = convert_from_path(pdf_path)
 
-            pdf_path = build_downloads_path(filename)
-            if not pdf_path.exists():
-                return ServiceResult.failure(f"PDF file not found: {filename}")
+        # Extract text from all images concurrently
+        tasks = [
+            self._extract_and_save_text(filename, i + 1, image)
+            for i, image in enumerate(images)
+        ]
 
-            images = convert_from_path(pdf_path)
+        texts = await asyncio.gather(*tasks)
 
-            # Extract text from all images concurrently
-            tasks = [
-                self._extract_and_save_text(filename, i + 1, image)
-                for i, image in enumerate(images)
-            ]
-
-            texts = await asyncio.gather(*tasks)
-
-            self._log_info(f"Successfully extracted text from {len(texts)} pages")
-            return ServiceResult.success(texts)
-
-        except Exception as e:
-            error_msg = f"Failed to extract text from PDF: {str(e)}"
-            self._log_error(error_msg)
-            return ServiceResult.failure(error_msg)
+        self._log_info(f"Successfully extracted text from {len(texts)} pages")
+        return ServiceResult.success(texts)
 
     def process_pdf(self, filename: str) -> ServiceResult:
-        """
-        Complete PDF processing: convert to images and extract text.
+        self._log_info(f"Starting complete PDF processing: {filename}")
 
-        Args:
-            filename: The name of the PDF file
+        # Convert PDF to images
+        images_result = self.convert_pdf_to_images(filename)
+        if not images_result.success:
+            return images_result
 
-        Returns:
-            ServiceResult with processing summary
-        """
-        try:
-            self._log_info(f"Starting complete PDF processing: {filename}")
+        # Extract text from images
+        text_result = asyncio.run(self.extract_text_from_pdf(filename))
+        if not text_result.success:
+            return text_result
 
-            # Convert PDF to images
-            images_result = self.convert_pdf_to_images(filename)
-            if not images_result.success:
-                return images_result
+        summary = {
+            "filename": filename,
+            "pages_processed": len(images_result.data),
+            "texts_extracted": len(text_result.data),
+        }
 
-            # Extract text from images
-            text_result = asyncio.run(self.extract_text_from_pdf(filename))
-            if not text_result.success:
-                return text_result
-
-            summary = {
-                "filename": filename,
-                "pages_processed": len(images_result.data),
-                "texts_extracted": len(text_result.data),
-            }
-
-            self._log_info(f"PDF processing completed successfully: {summary}")
-            return ServiceResult.success(summary)
-
-        except Exception as e:
-            error_msg = f"Failed to process PDF: {str(e)}"
-            self._log_error(error_msg)
-            return ServiceResult.failure(error_msg)
+        self._log_info(f"PDF processing completed successfully: {summary}")
+        return ServiceResult.success(summary)

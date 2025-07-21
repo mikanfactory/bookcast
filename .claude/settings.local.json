@@ -12,5 +12,6 @@
     "context7",
     "jetbrains",
     "brave-search"
-  ]
+  ],
+  "enableAllProjectMcpServers": true
 }
