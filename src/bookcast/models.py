@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -15,4 +17,4 @@ class PodcastSetting(BaseModel):
     personality1_name: str
     personality2_name: str
     length: int
-    prompt: str
+    prompt: Optional[str]
