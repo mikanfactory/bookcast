@@ -8,7 +8,7 @@ from bookcast.services.base import BaseService
 from bookcast.services.chapter import ChapterService
 from bookcast.services.file import FileService
 from bookcast.services.pdf_processing import PDFProcessingService
-from bookcast.services.podcast import PodcastService
+from bookcast.services.script_writing import ScriptWritingService
 from bookcast.services.session import SessionService
 
 
@@ -38,7 +38,7 @@ class ServiceManager:
         )
 
         # Podcast Service
-        self._services["podcast"] = PodcastService(
+        self._services["podcast"] = ScriptWritingService(
             config=self.config.get("podcast", {})
         )
 
@@ -61,7 +61,7 @@ class ServiceManager:
         return self._services["chapter"]
 
     @property
-    def podcast(self) -> PodcastService:
+    def podcast(self) -> ScriptWritingService:
         """Get the podcast service."""
         return self._services["podcast"]
 
@@ -105,7 +105,7 @@ class ServiceManager:
                     config=self.config.get("chapter", {})
                 )
             elif service_name == "podcast":
-                self._services[service_name] = PodcastService(
+                self._services[service_name] = ScriptWritingService(
                     config=self.config.get("podcast", {})
                 )
             elif service_name == "session":

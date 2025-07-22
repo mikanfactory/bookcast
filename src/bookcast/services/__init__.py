@@ -9,7 +9,7 @@ from .base import BaseService, ServiceResult
 from .chapter import ChapterService
 from .file import FileService
 from .pdf_processing import PDFProcessingService
-from .podcast import PodcastService
+from .script_writing import ScriptWritingService
 from .service_manager import (
     ServiceManager,
     get_service_manager,
@@ -22,7 +22,7 @@ __all__ = [
     "ServiceResult",
     "PDFProcessingService",
     "ChapterService",
-    "PodcastService",
+    "ScriptWritingService",
     "SessionService",
     "FileService",
     "ServiceManager",

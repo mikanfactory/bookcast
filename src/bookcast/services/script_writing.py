@@ -38,7 +38,9 @@ class EvaluateResult(BaseModel):
 
 class State(BaseModel):
     source_text: str = Field(..., description="台本の元となる文章")
-    topics: List[PodcastTopic] = Field(default_factory=list, description="トピックのリスト")
+    topics: List[PodcastTopic] = Field(
+        default_factory=list, description="トピックのリスト"
+    )
     script: str = Field(default="", description="台本")
     feedback_messages: Annotated[list[str], operator.add] = Field(
         default_factory=list, description="作成された台本に対するフィードバック"
@@ -59,9 +61,11 @@ class PodCastTopicSearcher(object):
             "source_text:{source_text}"
         )
 
-        message = ChatPromptTemplate([
-            ("human", prompt_text),
-        ])
+        message = ChatPromptTemplate(
+            [
+                ("human", prompt_text),
+            ]
+        )
 
         chain = message | self.llm.with_structured_output(TopicSearchResult)
         return await chain.ainvoke({"source_text": state.source_text})
@@ -97,20 +101,17 @@ class PodCastScriptWriter(object):
             "Speaker2: 本当ですね。ちょっと暑いくらいですね。"
         )
         if state.feedback_messages:
-            system_prompt += (
-                "フィードバック: {feedback_messages}"
-            )
+            system_prompt += "フィードバック: {feedback_messages}"
 
         formated_topics = _format_topics(state.topics)
-        prompt_text = (
-            f"トピック: {formated_topics}"
-            "文章: {source_text}"
-        )
+        prompt_text = f"トピック: {formated_topics}文章: {{source_text}}"
 
-        message = ChatPromptTemplate([
-            ("system", system_prompt),
-            ("human", prompt_text),
-        ])
+        message = ChatPromptTemplate(
+            [
+                ("system", system_prompt),
+                ("human", prompt_text),
+            ]
+        )
 
         chain = message | self.llm | StrOutputParser()
         return await chain.ainvoke({"source_text": state.source_text})
@@ -135,9 +136,11 @@ class PodCastScriptEvaluator(object):
             "台本: {script}"
         )
 
-        message = ChatPromptTemplate([
-            ("human", prompt_text),
-        ])
+        message = ChatPromptTemplate(
+            [
+                ("human", prompt_text),
+            ]
+        )
 
         chain = message | self.llm.with_structured_output(EvaluateResult)
         return await chain.ainvoke({"script": state.script})
@@ -220,7 +223,7 @@ class Chapter(BaseModel):
         return acc
 
 
-class PodcastService(BaseService):
+class ScriptWritingService(BaseService):
     def __init__(self, config: Optional[dict] = None):
         super().__init__(config)
         self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
@@ -228,7 +231,9 @@ class PodcastService(BaseService):
         self.script_model = "gemini-2.0-flash"
 
     @staticmethod
-    async def _generate_script_for_text(podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+    async def _generate_script_for_text(
+        podcast_setting: PodcastSetting, chapter: Chapter
+    ) -> str:
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
         )
@@ -236,7 +241,9 @@ class PodcastService(BaseService):
         response = await script_writer_agent.run(chapter.source_text)
         return response
 
-    async def _generate_chapter_script(self, podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+    async def _generate_chapter_script(
+        self, podcast_setting: PodcastSetting, chapter: Chapter
+    ) -> str:
         async with self.semaphore:
             script = await self._generate_script_for_text(podcast_setting, chapter)
 

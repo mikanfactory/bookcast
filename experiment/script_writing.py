@@ -1,6 +1,6 @@
 import logging
 
-from bookcast.services.podcast import PodcastService, Chapter, PodcastSetting
+from bookcast.services.script_writing import ScriptWritingService, Chapter, PodcastSetting
 from bookcast.path_resolver import (resolve_text_path)
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ def read_texts(filename: str, start_page: int, end_page: int):
 
 def main():
     filename = "chapter3.pdf"
-    service = PodcastService()
+    service = ScriptWritingService()
 
     podcast_setting = PodcastSetting(
         num_of_people=2,
