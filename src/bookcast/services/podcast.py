@@ -1,33 +1,208 @@
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Annotated
 
 from google import genai
-from google.genai import types
 from pydantic import BaseModel, Field
+import operator
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph import StateGraph, END
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.models import Chapters, PodcastSetting
+from bookcast.models import PodcastSetting
 from bookcast.path_resolver import (
     build_script_directory,
-    build_text_directory,
     resolve_script_path,
 )
 from bookcast.services.base import BaseService, ServiceResult
 
+MAX_RETRY_COUNT = 3
 
-class PodCastScriptWriter(object):
+
+class PodcastTopic(BaseModel):
+    title: str = Field(..., description="トピックのタイトル")
+    description: str = Field(..., description="トピックの概要")
+
+
+class TopicSearchResult(BaseModel):
+    topics: List[PodcastTopic] = Field(..., description="トピックのリスト")
+
+
+class EvaluateResult(BaseModel):
+    is_valid: bool = Field(..., description="適切か否か")
+    feedback_message: str = Field(..., description="フィードバックのリスト")
+
+
+class State(BaseModel):
+    source_text: str = Field(..., description="台本の元となる文章")
+    topics: List[PodcastTopic] = Field(default_factory=list, description="トピックのリスト")
+    script: str = Field(default="", description="台本")
+    feedback_messages: Annotated[list[str], operator.add] = Field(
+        default_factory=list, description="作成された台本に対するフィードバック"
+    )
+    retry_count: int = Field(default=0, description="再実行回数")
+    is_valid: bool = Field(default=False, description="適切か否か")
+
+
+class PodCastTopicSearcher(object):
     def __init__(self, llm):
         self.llm = llm
+
+    async def run(self, state: State) -> TopicSearchResult:
+        prompt_text = (
+            "あなたはトピックを抽出する専門家です。"
+            "次の文章を元にして、ポッドキャストの台本を作成しようとしています。"
+            "文章を読んで、3から5つのトピックを抽出してください。"
+            "source_text:{source_text}"
+        )
+
+        message = ChatPromptTemplate([
+            ("human", prompt_text),
+        ])
+
+        chain = message | self.llm.with_structured_output(TopicSearchResult)
+        return await chain.ainvoke({"source_text": state.source_text})
+
+
+def _format_topics(topics: List[PodcastTopic]) -> str:
+    acc = "\n"
+    for topic in topics:
+        acc += f"- タイトル: {topic.title}, 概要: {topic.description}\n"
+
+    return acc
+
+
+class PodCastScriptWriter(object):
+    def __init__(self, llm, podcast_setting: PodcastSetting):
+        self.llm = llm
+        self.podcast_setting = podcast_setting
+
+    async def run(self, state: State) -> str:
+        system_prompt = (
+            "あなたはポッドキャストの台本を作成する専門家です。"
+            "今回扱う内容は難しいですが、視聴者は専門知識を持っているため、難しいまま理解できます。"
+            "与えられた文章をなるべく端折らず、会話で掘り下げていく形で台本を作成してください。"
+            "必ず守るルール:"
+            "- ユーザーから与えられたトピックはすべて網羅してください。"
+            "- ポッドキャストの長さは気にせず、全部のトピックを詳しく説明してください。"
+            "- 本文のみを出力してください。オープニングとエンディングは別で処理します。"
+            "- フィードバックがある場合は、それに注意して台本を作成してください。"
+            "- 2人の会話形式で台本を書いてください。"
+            "- 出力の形式は下記のようにしてください。"
+            "**出力例**"
+            "Speaker1: こんにちは。今日はいい天気ですね。"
+            "Speaker2: 本当ですね。ちょっと暑いくらいですね。"
+        )
+        if state.feedback_messages:
+            system_prompt += (
+                "フィードバック: {feedback_messages}"
+            )
+
+        formated_topics = _format_topics(state.topics)
+        prompt_text = (
+            f"トピック: {formated_topics}"
+            "文章: {source_text}"
+        )
+
+        message = ChatPromptTemplate([
+            ("system", system_prompt),
+            ("human", prompt_text),
+        ])
+
+        chain = message | self.llm | StrOutputParser()
+        return await chain.ainvoke({"source_text": state.source_text})
 
 
 class PodCastScriptEvaluator(object):
     def __init__(self, llm):
         self.llm = llm
 
+    async def run(self, state: State) -> EvaluateResult:
+        topics = _format_topics(state.topics)
+        prompt_text = (
+            "あなたはポッドキャストの台本を評価する専門家です。"
+            "次の台本を読んで、以下の基準に基づいて評価してください。"
+            "- トピックはすべて網羅されているか"
+            "- 話のつながりが不自然でないか"
+            "- 聞き手にとって十分な情報が提供されているか"
+            "適切であればtrueを返してください。"
+            "不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。"
+            "またフィードバックには必ず具体例を入れるようにしてください。"
+            f"トピック: {topics}"
+            "台本: {script}"
+        )
+
+        message = ChatPromptTemplate([
+            ("human", prompt_text),
+        ])
+
+        chain = message | self.llm.with_structured_output(EvaluateResult)
+        return await chain.ainvoke({"script": state.script})
+
 
 class PodCastOrchestrator(object):
-    def __init__(self, llm):
+    def __init__(self, llm, podcast_setting: PodcastSetting):
         self.llm = llm
+        self.topic_searcher = PodCastTopicSearcher(llm)
+        self.script_writer = PodCastScriptWriter(llm, podcast_setting)
+        self.script_evaluator = PodCastScriptEvaluator(llm)
+        self.graph = self._create_graph()
+
+    async def _search_topics(self, state: State):
+        result = await self.topic_searcher.run(state)
+        return {
+            "topics": result.topics,
+        }
+
+    async def _write_script(self, state: State):
+        script = await self.script_writer.run(state)
+        return {
+            "script": script,
+        }
+
+    async def _evaluate_script(self, state: State):
+        result = await self.script_evaluator.run(state)
+        if result.is_valid:
+            return {"is_valid": True}
+        else:
+            return {
+                "is_valid": False,
+                "retry_count": state.retry_count + 1,
+                "feedback_message": [result.feedback_message],
+            }
+
+    def _should_retry_or_continue(self, state: State):
+        if state.is_valid:
+            return True
+        elif state.retry_count < MAX_RETRY_COUNT:
+            return False
+        else:
+            return True
+
+    def _create_graph(self):
+        graph = StateGraph(State)
+        graph.add_node("search_topics", self._search_topics)
+        graph.add_node("write_script", self._write_script)
+        graph.add_node("evaluate_script", self._evaluate_script)
+
+        graph.set_entry_point("search_topics")
+        graph.add_edge("search_topics", "write_script")
+        graph.add_edge("write_script", "evaluate_script")
+        graph.add_conditional_edges(
+            "evaluate_script",
+            self._should_retry_or_continue,
+            {True: END, False: "write_script"},
+        )
+
+        return graph.compile()
+
+    async def run(self, source_text) -> str:
+        state = State(source_text=source_text)
+        result = await self.graph.ainvoke(state)
+        return result["script"]
 
 
 class Chapter(BaseModel):
@@ -36,37 +211,13 @@ class Chapter(BaseModel):
     extracted_texts: List[str] = Field(...)
 
     @property
-    def text(self) -> str:
+    def source_text(self) -> str:
         acc = ""
         for t in self.extracted_texts:
             acc += t
             acc += "\n\n"
 
         return acc
-
-
-def _build_script_prompt(podcast_setting: PodcastSetting) -> str:
-    base_prompt = (
-        "与えられた文章をもとに、ポッドキャストの台本を作成してください。"
-        f"ポッドキャストのMCは{podcast_setting.num_of_people}人います。"
-    )
-
-    if podcast_setting.num_of_people >= 1:
-        base_prompt += f"1人目の名前は「{podcast_setting.personality1_name}」です。"
-
-    if podcast_setting.num_of_people >= 2:
-        base_prompt += f"2人目の名前は「{podcast_setting.personality2_name}」です。"
-
-    base_prompt += (
-        "扱うトピックは難しいですが、視聴者は専門知識を持っているため、難しいまま理解できます。"
-        "与えられた文章をなるべく端折らず、会話で掘り下げていく形で台本を作成してください。"
-        f"ポッドキャストの長さは約{podcast_setting.length}分です。"
-    )
-
-    if podcast_setting.prompt:
-        base_prompt += f"\n\n追加の指示: {podcast_setting.prompt}"
-
-    return base_prompt
 
 
 class PodcastService(BaseService):
@@ -76,19 +227,18 @@ class PodcastService(BaseService):
         self.semaphore = asyncio.Semaphore(10)
         self.script_model = "gemini-2.0-flash"
 
-    async def _generate_script_for_text(self, text: str, prompt: str) -> str:
-        response = self.gemini_client.aio.models.generate_content(
-            model=self.script_model,
-            config=types.GenerateContentConfig(system_instruction=prompt),
-            contents=text,
+    @staticmethod
+    async def _generate_script_for_text(podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
         )
+        script_writer_agent = PodCastOrchestrator(llm, podcast_setting)
+        response = await script_writer_agent.run(chapter.source_text)
+        return response
 
-        resp = await response
-        return resp.text.strip()
-
-    async def _generate_chapter_script(self, chapter: Chapter, prompt: str) -> str:
+    async def _generate_chapter_script(self, podcast_setting: PodcastSetting, chapter: Chapter) -> str:
         async with self.semaphore:
-            script = await self._generate_script_for_text(chapter.text, prompt)
+            script = await self._generate_script_for_text(podcast_setting, chapter)
 
         script_dir = build_script_directory(chapter.filename)
         script_dir.mkdir(parents=True, exist_ok=True)
@@ -100,124 +250,4 @@ class PodcastService(BaseService):
         return script
 
     def process(self, podcast_setting: PodcastSetting, chapter: Chapter):
-        prompt = _build_script_prompt(podcast_setting)
-        asyncio.run(self._generate_chapter_script(chapter, prompt))
-
-    # @staticmethod
-    # def _get_chapter_page_ranges(chapters: Chapters, max_page_number: int) -> List[tuple]:
-    #     chapter_pages = []
-    #     for config in chapters.chapters.values():
-    #         chapter_pages.append(config.page_number)
-    #
-    #     chapter_pages.sort()
-    #
-    #     ranges = []
-    #     for i, start_page in enumerate(chapter_pages):
-    #         if i < len(chapter_pages) - 1:
-    #             end_page = chapter_pages[i + 1] - 1
-    #         else:
-    #             end_page = max_page_number
-    #
-    #         ranges.append((start_page, end_page))
-    #
-    #     return ranges
-    #
-    # @staticmethod
-    # def _combine_chapter_text(filename: str, start_page: int, end_page: int) -> str:
-    #     text_dir = build_text_directory(filename)
-    #     combined_text = ""
-    #
-    #     for page_num in range(start_page, end_page + 1):
-    #         text_path = text_dir / f"page_{page_num:03d}.txt"
-    #         if text_path.exists():
-    #             with open(text_path, "r", encoding="utf-8") as f:
-    #                 combined_text += f.read() + "\n"
-    #
-    #     return combined_text
-    #
-    # async def generate_podcast_scripts(
-    #     self,
-    #     filename: str,
-    #     max_page_number: int,
-    #     chapters: Chapters,
-    #     podcast_setting: PodcastSetting,
-    # ) -> ServiceResult:
-    #     self._log_info(
-    #         f"Generating podcast scripts for {len(chapters.chapters)} chapters"
-    #     )
-    #
-    #     prompt = self._build_script_prompt(podcast_setting)
-    #
-    #     page_ranges = self._get_chapter_page_ranges(chapters, max_page_number)
-    #
-    #     # Combine text for each chapter
-    #     chapter_texts = []
-    #     for start_page, end_page in page_ranges:
-    #         text = self._combine_chapter_text(filename, start_page, end_page)
-    #         chapter_texts.append(text)
-    #
-    #     tasks = []
-    #     for chapter_num, text in enumerate(chapter_texts, 1):
-    #         task = self._generate_and_save_script(
-    #             filename, chapter_num, text, prompt
-    #         )
-    #         tasks.append(task)
-    #
-    #     scripts = await asyncio.gather(*tasks)
-    #
-    #     combined_script = "\n\n--- 次の章 ---\n\n".join(scripts)
-    #
-    #     result = {
-    #         "scripts": scripts,
-    #         "combined_script": combined_script,
-    #         "chapters_processed": len(scripts),
-    #         "prompt_used": prompt,
-    #     }
-    #
-    #     self._log_info(f"Successfully generated {len(scripts)} scripts")
-    #     return ServiceResult.success(result)
-    #
-    # @staticmethod
-    # def get_script_content(filename: str, chapter_num: int) -> ServiceResult:
-    #     script_path = resolve_script_path(filename, chapter_num)
-    #
-    #     if not script_path.exists():
-    #         return ServiceResult.failure(
-    #             f"Script file not found for chapter {chapter_num}"
-    #         )
-    #
-    #     with open(script_path, "r", encoding="utf-8") as f:
-    #         content = f.read()
-    #
-    #     result = {
-    #         "chapter_num": chapter_num,
-    #         "content": content,
-    #         "file_path": str(script_path),
-    #     }
-    #
-    #     return ServiceResult.success(result)
-    #
-    # def get_all_scripts(self, filename: str, chapters: Chapters) -> ServiceResult:
-    #     self._log_info(f"Getting all scripts for {len(chapters.chapters)} chapters")
-    #
-    #     scripts = []
-    #     for chapter_num in sorted(chapters.chapters.keys()):
-    #         script_result = self.get_script_content(filename, chapter_num)
-    #         if script_result.success:
-    #             scripts.append(script_result.data)
-    #         else:
-    #             self._log_error(
-    #                 f"Failed to get script for chapter {chapter_num}: "
-    #                 f"{script_result.error}"
-    #             )
-    #
-    #     # Combine all scripts
-    #     combined_content = "\n\n--- 次の章 ---\n\n".join(
-    #         [s["content"] for s in scripts]
-    #     )
-    #
-    #     result = {
-    #         "scripts": scripts,
-    #         "combined_content": combined_content,
-    #         "total_chapters": len(scripts),
-    #     }
+        asyncio.run(self._generate_chapter_script(podcast_setting, chapter))

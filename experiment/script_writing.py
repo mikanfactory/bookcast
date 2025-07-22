@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_text_from_file(filename: str, page_number: int):
-    file_path = resolve_text_path(filename, 1)
+    file_path = resolve_text_path(filename, page_number + 1)
     with open(file_path, "r") as f:
         text = f.read()
 
@@ -35,7 +35,7 @@ def main():
         prompt=None
     )
 
-    texts = read_texts(filename, 0, 37)
+    texts = read_texts(filename, 0, 36)
 
     chapter = Chapter(
         filename=filename,
