@@ -31,7 +31,7 @@ class OCRState(BaseModel):
     page_number: int = Field(..., description="画像のページ番号")
     base64_image: str = Field(default=None, description="対象の画像")
     extracted_string: str = Field(default="", description="画像から読み取れた文字列")
-    feedback_message: Annotated[list[str], operator.add] = Field(
+    feedback_messages: Annotated[list[str], operator.add] = Field(
         default=[], description="読み取り結果に対するフィードバック"
     )
     retry_count: int = Field(default=0, description="再実行回数")
@@ -75,7 +75,7 @@ class OCRExecutorAgent(object):
         )
 
         if state.retry_count > 0:
-            reflection_text = format_reflections(state.feedback_message)
+            reflection_text = format_reflections(state.feedback_messages)
             prompt_text += f"\n\n実行する際に、以下の過去の振り返りを考慮すること。\n{reflection_text}"
 
         message = ChatPromptTemplate(
@@ -164,7 +164,7 @@ class OCROrchestrator(object):
             return {
                 "is_valid": False,
                 "retry_count": state.retry_count + 1,
-                "feedback_message": [result.feedback_message],
+                "feedback_messages": [result.feedback_message],
             }
 
     def _should_retry_or_continue(self, state: OCRState):
