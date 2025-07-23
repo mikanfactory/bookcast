@@ -79,4 +79,3 @@ class TextToSpeechService:
 
     def generate_audio(self, source_script: str, chapter: Chapter):
         return asyncio.run(self._generate_audio(source_script, chapter))
-

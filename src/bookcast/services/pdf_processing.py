@@ -52,7 +52,7 @@ class JudgmentResult(BaseModel):
 def format_reflections(reflections: list[str]) -> str:
     acc = ""
     for i, reflection in enumerate(reflections):
-        acc += f"{i + 1}: {reflection}"
+        acc += f"{i + 1}: {reflection}\n"
 
     return acc
 
@@ -62,21 +62,21 @@ class OCRExecutorAgent(object):
         self.llm = llm
 
     async def run(self, state: OCRState) -> ImageProcessingResult:
-        prompt_text = (
-            "この画像に含まれる文字を抽出してください。"
-            "抽出したいもの:"
-            "- 章や節のタイトル"
-            "- 本文"
-            "抽出しなくていいもの:"
-            "- 脚注などの注"
-            "- 図や図に含まれる文章"
-            "- キャプション"
-            "- ページ番号"
-        )
+        prompt_text = """
+あなたはOCRを行うAIです。この画像に含まれる文字を抽出してください。
+抽出したいもの:
+- 本文
+- 章や節のタイトル
+抽出しなくていいもの:
+- 脚注などの注
+- 図や、図中の文章
+- キャプション
+- ページ番号
+"""
 
         if state.retry_count > 0:
             reflection_text = format_reflections(state.feedback_messages)
-            prompt_text += f"\n\n実行する際に、以下の過去の振り返りを考慮すること。\n{reflection_text}"
+            prompt_text += f"\n\n実行する際に、以下の過去の他社からのフィードバックを考慮すること。\n{reflection_text}"
 
         message = ChatPromptTemplate(
             [
@@ -104,23 +104,23 @@ class OCRResultGuardian(object):
         self.llm = llm
 
     async def run(self, state: OCRState) -> JudgmentResult:
-        prompt_text = (
-            "あなたはOCRの結果の検証を行うAIです。"
-            "このOCRの結果は次のものを対象としています。"
-            "抽出したいもの:"
-            "- 章や節のタイトル"
-            "- 本文"
-            "抽出しなくていいもの:"
-            "- 脚注などの注"
-            "- 図や図に含まれる文章"
-            "- キャプション"
-            "- ページ番号"
-            "あなたはまず画像から文章を読み取り、その後に受け取った文章と照らし合わせてください。"
-            "適切であればtrueを返してください。"
-            "不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。"
-            "またフィードバックにはどこが読み取れていないか、具体例を入れるようにしてください。"
-            f"OCR結果: {state.extracted_string}"
-        )
+        prompt_text = """
+あなたはOCRの結果の検証を行うAIです。
+このOCRの結果は次のものを対象としています。
+抽出したいもの:
+- 本文
+- 章や節のタイトル
+抽出しなくていいもの:
+- 脚注などの注
+- 図や、図中の文章
+- キャプション
+- ページ番号
+あなたはまず画像から文章を読み取り、その後に受け取った文章と照らし合わせてください。
+適切であればtrueを返してください。
+不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。
+またフィードバックにはどこが読み取れていないか、具体例を入れるようにしてください。
+OCR結果: {extracted_string}
+"""
 
         message = ChatPromptTemplate(
             [

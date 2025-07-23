@@ -1,7 +1,11 @@
 import logging
 
-from bookcast.services.script_writing import ScriptWritingService, Chapter, PodcastSetting
-from bookcast.path_resolver import (resolve_text_path)
+from bookcast.services.script_writing import (
+    ScriptWritingService,
+    Chapter,
+    PodcastSetting,
+)
+from bookcast.path_resolver import resolve_text_path
 
 logger = logging.getLogger(__name__)
 
@@ -29,19 +33,15 @@ def main():
 
     podcast_setting = PodcastSetting(
         num_of_people=2,
-        personality1_name='Alnilam',
-        personality2_name='Autonoe',
+        personality1_name="Alnilam",
+        personality2_name="Autonoe",
         length=15,
-        prompt=None
+        prompt=None,
     )
 
     texts = read_texts(filename, 0, 36)
 
-    chapter = Chapter(
-        filename=filename,
-        chapter_number=1,
-        extracted_texts=texts
-    )
+    chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
 
     result = service.process(podcast_setting, chapter)
     print(result)
