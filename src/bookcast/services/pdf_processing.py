@@ -1,6 +1,7 @@
 import asyncio
 import io
 from typing import Optional, Annotated
+from logging import getLogger
 
 import base64
 from pdf2image import convert_from_path
@@ -23,6 +24,7 @@ from bookcast.path_resolver import (
 )
 from bookcast.services.base import BaseService, ServiceResult
 
+logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
 
 

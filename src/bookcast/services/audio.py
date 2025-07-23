@@ -1,7 +1,10 @@
+from logging import getLogger
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 from bookcast.path_resolver import resolve_audio_path, resolve_audio_output_path
 from bookcast.entities import Chapter
+
+logger = getLogger(__name__)
 
 
 def normalize(audio, target_dBFS=-16.0):
@@ -64,6 +67,7 @@ class AudioService:
         return bgm_quiet
 
     def generate_audio(self, chapter: Chapter):
+        logger.info(f"Generating audio for chapter: {str(chapter)}")
         jingle_audio = self._coordinate_jingle()
         script_audio = self._coordinate_script(chapter)
 
@@ -74,3 +78,4 @@ class AudioService:
 
         output_path = resolve_audio_output_path(chapter.filename, chapter.chapter_number)
         output_audio.export(output_path, format='wav', bitrate="192k")
+        logger.info(f"Audio exported to: {output_path}")

@@ -1,5 +1,6 @@
 import asyncio
 from typing import List, Optional, Annotated
+from logging import getLogger
 
 from google import genai
 from pydantic import BaseModel, Field
@@ -20,6 +21,7 @@ from bookcast.path_resolver import (
 from bookcast.services.base import BaseService
 from bookcast.entities import Chapter
 
+logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
 
 
@@ -243,4 +245,6 @@ class ScriptWritingService(BaseService):
         return script
 
     def process(self, podcast_setting: PodcastSetting, chapter: Chapter):
+        logger.info(f"Generating script for chapter: {str(chapter)}")
         asyncio.run(self._generate_chapter_script(podcast_setting, chapter))
+        logger.info(f"Script generated.")

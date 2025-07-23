@@ -1,15 +1,20 @@
 import asyncio
+import pathlib
+
 from google import genai
 from google.genai import types
 import wave
+from logging import getLogger
 
 from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.path_resolver import resolve_audio_path, build_audio_directory
 from bookcast.entities import Chapter
 
+logger = getLogger(__name__)
 
-def save_wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
+
+def save_wave_file(filename, pcm, channels=1, rate=24000, sample_width=2) -> None:
     with wave.open(filename, "wb") as wf:
         wf.setnchannels(channels)
         wf.setsampwidth(sample_width)
@@ -31,7 +36,7 @@ class TextToSpeechService:
         chunks = text_splitter.split_text(source_script)
         return chunks
 
-    async def _generate(self, semaphore, script: str, chapter: Chapter, index: int):
+    async def _generate(self, semaphore, script: str, chapter: Chapter, index: int) -> pathlib.Path:
         async with semaphore:
             response = await self.client.aio.models.generate_content(
                 model="gemini-2.5-flash-preview-tts",
@@ -69,19 +74,22 @@ class TextToSpeechService:
         audio_dir.mkdir(parents=True, exist_ok=True)
 
         filename = resolve_audio_path(chapter.filename, chapter.chapter_number, index)
+        logger.info(f"Saving audio to {filename}.")
         save_wave_file(str(filename), data)
         return filename
 
     async def _generate_audio(self, source_script: str, chapter: Chapter):
         semaphore = asyncio.Semaphore(5)
         chunked_scripts = self.split_script(source_script)
-        print(f"Total chunks to process: {len(chunked_scripts)}")
+        logger.info(f"Total chunks to process: {len(chunked_scripts)}")
+
         tasks = []
         for i, script in enumerate(chunked_scripts):
             tasks.append(self._generate(semaphore, script, chapter, i))
 
-        results = await asyncio.gather(*tasks)
-        return results
+        return await asyncio.gather(*tasks)
 
-    def generate_audio(self, source_script: str, chapter: Chapter):
-        return asyncio.run(self._generate_audio(source_script, chapter))
+    def generate_audio(self, source_script: str, chapter: Chapter) -> None:
+        logger.info(f"Generating audio for chapter: {str(chapter)}")
+        asyncio.run(self._generate_audio(source_script, chapter))
+        logger.info("Audio generation completed successfully.")
