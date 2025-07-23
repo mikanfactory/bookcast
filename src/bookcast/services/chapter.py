@@ -2,7 +2,7 @@
 Chapter management service for handling chapter selection and validation.
 """
 
-from bookcast.models import ChapterConfig, Chapters
+from bookcast.view_models import ChapterConfig, Chapters
 from bookcast.path_resolver import resolve_image_path, resolve_text_path
 from bookcast.services.base import BaseService, ServiceResult
 

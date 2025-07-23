@@ -2,7 +2,7 @@
 Tests for service layer functionality.
 """
 
-from bookcast.models import ChapterConfig, Chapters
+from bookcast.view_models import ChapterConfig, Chapters
 
 
 def test_service_manager_initialization(service_manager):

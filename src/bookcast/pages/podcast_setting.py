@@ -4,7 +4,7 @@ import time
 import streamlit as st
 from streamlit.logger import get_logger
 
-from bookcast.models import PodcastSetting
+from bookcast.view_models import PodcastSetting
 from bookcast.page import Rooter
 from bookcast.services import get_service_manager
 from bookcast.voice_option import VoiceOptions

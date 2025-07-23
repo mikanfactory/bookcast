@@ -2,7 +2,7 @@
 Tests for the refactored select_chapter functionality.
 """
 
-from bookcast.models import ChapterConfig, Chapters
+from bookcast.view_models import ChapterConfig, Chapters
 
 
 class TestSelectChapterPage:

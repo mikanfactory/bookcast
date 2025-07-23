@@ -2,7 +2,7 @@
 Tests for the refactored podcast-related pages.
 """
 
-from bookcast.models import ChapterConfig, Chapters, PodcastSetting
+from bookcast.view_models import ChapterConfig, Chapters, PodcastSetting
 
 
 class TestPodcastSettingPage:

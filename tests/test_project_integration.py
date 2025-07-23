@@ -2,7 +2,7 @@
 Integration tests for project processing with existing data.
 """
 
-from bookcast.models import ChapterConfig, Chapters
+from bookcast.view_models import ChapterConfig, Chapters
 
 
 def test_existing_project_status(service_manager, sample_filename):

@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import streamlit as st
 
-from bookcast.models import Chapters, PodcastSetting
+from bookcast.view_models import Chapters, PodcastSetting
 from bookcast.services.base import BaseService, ServiceResult
 from bookcast.session_state import ChapterPageSessionState, SessionState
 

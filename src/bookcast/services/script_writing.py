@@ -12,7 +12,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.models import PodcastSetting
+from bookcast.view_models import PodcastSetting
 from bookcast.path_resolver import (
     build_script_directory,
     resolve_script_path,
