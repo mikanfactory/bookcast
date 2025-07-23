@@ -40,7 +40,14 @@ class AudioService:
         jingle_audio = AudioSegment.from_mp3("resources/jingle.mp3")
         jingle_audio = normalize(jingle_audio)
         jingle_audio = trim_silence(jingle_audio)
-        return jingle_audio
+
+        opening_call = AudioSegment.from_wav("resources/opening_call.wav")
+        opening_call = normalize(opening_call)
+        opening_call = trim_silence(opening_call)
+
+        opening = jingle_audio.overlay(opening_call, position=8000)
+
+        return opening
 
     def _coordinate_script(self):
         script_audios = read_script_audio_files("chapter3", 1)
