@@ -1,6 +1,5 @@
 import asyncio
 import io
-import json
 from typing import Optional, Annotated
 
 import base64

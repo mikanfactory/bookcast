@@ -17,7 +17,8 @@ from bookcast.path_resolver import (
     build_script_directory,
     resolve_script_path,
 )
-from bookcast.services.base import BaseService, ServiceResult
+from bookcast.services.base import BaseService
+from bookcast.entities import Chapter
 
 MAX_RETRY_COUNT = 3
 
@@ -206,21 +207,6 @@ class PodCastOrchestrator(object):
         state = State(source_text=source_text)
         result = await self.graph.ainvoke(state)
         return result["script"]
-
-
-class Chapter(BaseModel):
-    filename: str = Field(...)
-    chapter_number: int = Field(...)
-    extracted_texts: List[str] = Field(...)
-
-    @property
-    def source_text(self) -> str:
-        acc = ""
-        for t in self.extracted_texts:
-            acc += t
-            acc += "\n\n"
-
-        return acc
 
 
 class ScriptWritingService(BaseService):

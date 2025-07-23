@@ -6,7 +6,7 @@ import wave
 from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.path_resolver import resolve_audio_path, build_audio_directory
-from bookcast.services.script_writing import Chapter
+from bookcast.entities import Chapter
 
 
 def save_wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
