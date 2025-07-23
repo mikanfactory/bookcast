@@ -28,16 +28,16 @@ def main():
     with open(script_path, "r") as f:
         script_text = f.read()
 
-    texts = read_texts(filename, 0, 36)
-    chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
-
+    # texts = read_texts(filename, 0, 36)
+    # chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
+    #
     service = TextToSpeechService(api_key=GEMINI_API_KEY)
-    service.generate_audio(script_text, chapter)
+    # service.generate_audio(script_text, chapter)
 
-    # result = service.split_script(script_text)
-    # for r in result:
-    #     print("*************************************************")
-    #     print(r)
+    result = service.split_script(script_text)
+    for r in result:
+        print("*************************************************")
+        print(r)
 
 
 if __name__ == "__main__":

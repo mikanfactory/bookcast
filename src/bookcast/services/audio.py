@@ -1,5 +1,6 @@
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent, detect_silence
+from bookcast.path_resolver import resolve_audio_path, resolve_audio_output_path
 
 
 def normalize(audio, target_dBFS=-16.0):
@@ -18,31 +19,53 @@ def trim_silence(audio, silence_thresh=-40, min_silence_len=500):
     return audio[start_trim:end_trim]
 
 
-def shorten_long_silences(
-    audio, max_silence_len=1000, silence_thresh=-40, replace_with=250
-):
-    silence_ranges = detect_silence(
-        audio, min_silence_len=max_silence_len, silence_thresh=silence_thresh
-    )
-    output = AudioSegment.empty()
-    prev_end = 0
-    for start, end in silence_ranges:
-        output += audio[prev_end:start]
-        output += AudioSegment.silent(duration=replace_with)
-        prev_end = end
-    output += audio[prev_end:]
-    return output
+def read_script_audio_files(filename, chapter_number):
+    acc = []
+    for i in range(10):
+        path = resolve_audio_path(filename, chapter_number, i)
+        try:
+            audio = AudioSegment.from_wav(path)
+            acc.append(audio)
+        except FileNotFoundError:
+            pass
+
+    return acc
 
 
 class AudioService:
     def __init__(self):
         pass
 
-    def coordinate_audio(self):
+    def _coordinate_jingle(self):
         jingle_audio = AudioSegment.from_mp3("resources/jingle.mp3")
         jingle_audio = normalize(jingle_audio)
         jingle_audio = trim_silence(jingle_audio)
+        return jingle_audio
 
-        script_audio = AudioSegment.from_wav("script.wav")
-        script_audio = normalize(script_audio)
-        script_audio = trim_silence(script_audio)
+    def _coordinate_script(self):
+        script_audios = read_script_audio_files("chapter3", 1)
+        acc = AudioSegment.empty()
+        for script_audio in script_audios:
+            script_audio = normalize(script_audio)
+            script_audio = trim_silence(script_audio)
+            acc += script_audio
+
+        return acc
+
+    def _coordinate_bgm(self):
+        bgm_audio = AudioSegment.from_mp3("resources/bgm.mp3")
+        return bgm_audio
+
+    def coordinate_audio(self):
+        jingle_audio = self._coordinate_jingle()
+        script_audio = self._coordinate_script()
+
+        bgm_audio = self._coordinate_bgm()
+        bgm_looped = (bgm_audio * (len(script_audio) // len(bgm_audio) + 1))[:len(script_audio)]
+        bgm_quiet = bgm_looped - 15
+        script_with_bgm = script_audio.overlay(bgm_quiet)
+
+        output_audio = jingle_audio + script_with_bgm
+
+        output_path = resolve_audio_output_path("chapter3", 1)
+        output_audio.export(output_path, format='wav', bitrate="192k")

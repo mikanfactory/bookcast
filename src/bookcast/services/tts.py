@@ -25,7 +25,7 @@ class TextToSpeechService:
     def split_script(source_script: str) -> list[str]:
         text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
             separator="\n",
-            chunk_size=8000,
+            chunk_size=6000,  # 長過ぎると途中で途切れる
             chunk_overlap=0,
         )
         chunks = text_splitter.split_text(source_script)
@@ -64,9 +64,6 @@ class TextToSpeechService:
             )
 
         data = response.candidates[0].content.parts[0].inline_data.data
-        print(f"Save audio. index: {index}")
-        print(f"candidate: {len(response.candidates)}")
-        print(f"parts: {len(response.candidates[0].content.parts)}")
 
         audio_dir = build_audio_directory(chapter.filename)
         audio_dir.mkdir(parents=True, exist_ok=True)

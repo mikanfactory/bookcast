@@ -48,3 +48,8 @@ def resolve_script_path(filename: str, chapter_num: int) -> Path:
 def resolve_audio_path(filename: str, chapter_num: int, index: int) -> Path:
     script_dir = build_audio_directory(filename)
     return script_dir / f"chapter_{chapter_num:03d}_{index}_script.wav"
+
+
+def resolve_audio_output_path(filename: str, chapter_num: int) -> Path:
+    audio_dir = build_audio_directory(filename)
+    return audio_dir / f"chapter_{chapter_num:03d}_output.wav"
