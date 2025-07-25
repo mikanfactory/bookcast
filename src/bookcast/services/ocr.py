@@ -28,7 +28,7 @@ logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
 
 
-class OCRState(BaseModel):
+class State(BaseModel):
     page_number: int = Field(..., description="画像のページ番号")
     base64_image: str = Field(default=None, description="対象の画像")
     extracted_string: str = Field(default="", description="画像から読み取れた文字列")
@@ -39,11 +39,11 @@ class OCRState(BaseModel):
     is_valid: bool = Field(default=False, description="適切か否か")
 
 
-class ImageProcessingResult(BaseModel):
+class OCRResult(BaseModel):
     extracted_string: str = Field(..., description="画像から読み取れた文字列")
 
 
-class JudgmentResult(BaseModel):
+class EvaluateResult(BaseModel):
     is_valid: bool = Field(
         ..., description="OCRの結果が適切か否か。適切な場合はtrue。不適切ならfalse"
     )
@@ -58,11 +58,11 @@ def format_reflections(reflections: list[str]) -> str:
     return acc
 
 
-class OCRExecutorAgent(object):
+class OCRExecutor(object):
     def __init__(self, llm):
         self.llm = llm
 
-    async def run(self, state: OCRState) -> ImageProcessingResult:
+    async def run(self, state: State) -> OCRResult:
         prompt_text = """
 あなたはOCRを行うAIです。この画像に含まれる文字を抽出してください。
 抽出したいもの:
@@ -96,15 +96,15 @@ class OCRExecutorAgent(object):
             ]
         )
 
-        chain = message | self.llm.with_structured_output(ImageProcessingResult)
+        chain = message | self.llm.with_structured_output(OCRResult)
         return await chain.ainvoke({})
 
 
-class OCRResultGuardian(object):
+class OCRResultEvaluator(object):
     def __init__(self, llm):
         self.llm = llm
 
-    async def run(self, state: OCRState) -> JudgmentResult:
+    async def run(self, state: State) -> EvaluateResult:
         prompt_text = """
 あなたはOCRの結果の検証を行うAIです。
 このOCRの結果は次のものを対象としています。
@@ -140,24 +140,24 @@ OCR結果: {extracted_string}
             ]
         )
 
-        chain = message | self.llm.with_structured_output(JudgmentResult)
+        chain = message | self.llm.with_structured_output(EvaluateResult)
         return await chain.ainvoke({"extracted_string": state.extracted_string})
 
 
 class OCROrchestrator(object):
     def __init__(self, llm):
         self.llm = llm
-        self.ocr_agent = OCRExecutorAgent(llm)
-        self.guardian = OCRResultGuardian(llm)
+        self.ocr_agent = OCRExecutor(llm)
+        self.guardian = OCRResultEvaluator(llm)
         self.graph = self._create_graph()
 
-    async def _execute_ocr(self, state: OCRState):
+    async def _execute_ocr(self, state: State):
         result = await self.ocr_agent.run(state)
         return {
             "extracted_string": result.extracted_string,
         }
 
-    async def _judge_result(self, state: OCRState):
+    async def _evaluate_ocr_result(self, state: State):
         result = await self.guardian.run(state)
         if result.is_valid:
             return {"is_valid": True}
@@ -168,7 +168,7 @@ class OCROrchestrator(object):
                 "feedback_messages": [result.feedback_message],
             }
 
-    def _should_retry_or_continue(self, state: OCRState):
+    def _should_retry_or_continue(self, state: State):
         if state.is_valid:
             return True
         elif state.retry_count < MAX_RETRY_COUNT:
@@ -177,26 +177,26 @@ class OCROrchestrator(object):
             return True
 
     def _create_graph(self):
-        graph = StateGraph(OCRState)
-        graph.add_node("ocr_execution", self._execute_ocr)
-        graph.add_node("result_judgment", self._judge_result)
+        graph = StateGraph(State)
+        graph.add_node("execute_ocr", self._execute_ocr)
+        graph.add_node("evaluate_ocr_result", self._evaluate_ocr_result)
 
-        graph.set_entry_point("ocr_execution")
-        graph.add_edge("ocr_execution", "result_judgment")
+        graph.set_entry_point("execute_ocr")
+        graph.add_edge("execute_ocr", "evaluate_ocr_result")
         graph.add_conditional_edges(
-            "result_judgment",
+            "evaluate_ocr_result",
             self._should_retry_or_continue,
-            {True: END, False: "ocr_execution"},
+            {True: END, False: "execute_ocr"},
         )
 
         return graph.compile()
 
-    async def run(self, page_number: int, base64_image: str) -> ImageProcessingResult:
-        state = OCRState(page_number=page_number, base64_image=base64_image)
+    async def run(self, page_number: int, base64_image: str) -> OCRResult:
+        state = State(page_number=page_number, base64_image=base64_image)
         return await self.graph.ainvoke(state)
 
 
-class PDFProcessingService(BaseService):
+class OCRService(BaseService):
     def __init__(self, config: Optional[dict] = None):
         super().__init__(config)
         self.semaphore = asyncio.Semaphore(10)

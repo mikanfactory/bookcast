@@ -12,7 +12,7 @@ def test_service_manager_initialization(service_manager):
     # Test that all services are available
     assert services.file is not None, "FileService should be available"
     assert services.pdf_processing is not None, (
-        "PDFProcessingService should be available"
+        "OCRService should be available"
     )
     assert services.chapter is not None, "ChapterService should be available"
     assert services.podcast is not None, "PodcastService should be available"

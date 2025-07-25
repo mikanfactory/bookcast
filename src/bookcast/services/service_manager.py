@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from bookcast.services.base import BaseService
 from bookcast.services.chapter import ChapterService
 from bookcast.services.file import FileService
-from bookcast.services.pdf_processing import PDFProcessingService
+from bookcast.services.ocr import OCRService
 from bookcast.services.script_writing import ScriptWritingService
 from bookcast.services.session import SessionService
 
@@ -28,7 +28,7 @@ class ServiceManager:
     def _initialize_services(self):
         """Initialize all services with their configurations."""
         # PDF Processing Service
-        self._services["pdf_processing"] = PDFProcessingService(
+        self._services["pdf_processing"] = OCRService(
             config=self.config.get("pdf_processing", {})
         )
 
@@ -51,7 +51,7 @@ class ServiceManager:
         self._services["file"] = FileService(config=self.config.get("file", {}))
 
     @property
-    def pdf_processing(self) -> PDFProcessingService:
+    def pdf_processing(self) -> OCRService:
         """Get the PDF processing service."""
         return self._services["pdf_processing"]
 
@@ -97,7 +97,7 @@ class ServiceManager:
         if service_name in self._services:
             # Re-initialize the service
             if service_name == "pdf_processing":
-                self._services[service_name] = PDFProcessingService(
+                self._services[service_name] = OCRService(
                     config=self.config.get("pdf_processing", {})
                 )
             elif service_name == "chapter":

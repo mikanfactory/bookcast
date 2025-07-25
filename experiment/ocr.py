@@ -1,9 +1,9 @@
-from bookcast.services.pdf_processing import PDFProcessingService
+from bookcast.services.ocr import OCRService
 
 
 def main():
     filename = "chapter3.pdf"
-    service = PDFProcessingService()
+    service = OCRService()
 
     result = service.process_pdf(filename)
     print(result)

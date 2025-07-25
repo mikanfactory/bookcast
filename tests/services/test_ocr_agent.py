@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 import base64
 
-from bookcast.services.pdf_processing import OCRExecutorAgent, OCRState
+from bookcast.services.ocr import OCRExecutorAgent, OCRState
 
 
 class TestOCRExecutorAgent:

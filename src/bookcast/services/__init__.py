@@ -8,7 +8,7 @@ functionality of the application.
 from .base import BaseService, ServiceResult
 from .chapter import ChapterService
 from .file import FileService
-from .pdf_processing import PDFProcessingService
+from .ocr import OCRService
 from .script_writing import ScriptWritingService
 from .service_manager import (
     ServiceManager,
@@ -20,7 +20,7 @@ from .session import SessionService
 __all__ = [
     "BaseService",
     "ServiceResult",
-    "PDFProcessingService",
+    "OCRService",
     "ChapterService",
     "ScriptWritingService",
     "SessionService",
