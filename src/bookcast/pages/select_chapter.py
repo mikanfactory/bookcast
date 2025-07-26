@@ -110,7 +110,7 @@ def validate_and_proceed(chapters):
 
         if validation_result.success:
             logger.info("Chapter configuration validated successfully")
-            st.switch_page(Rooter.podcast_setting_page())
+            st.switch_page(Rooter.podcast_page())
         else:
             st.error(validation_result.error)
 
