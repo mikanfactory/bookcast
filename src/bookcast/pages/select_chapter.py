@@ -9,7 +9,6 @@ logger = get_logger(__name__)
 
 
 def initialize_session(services):
-    """Initialize session state and return current values."""
     # Get session values with fallback for debugging
     filename = services.session.get_filename()
     if not filename:
@@ -33,7 +32,6 @@ def initialize_session(services):
 
 
 def update_chapter(services, current_page: int):
-    """Update chapter configuration when user selects a chapter."""
     selected_chapter = st.session_state[PState.chapter_select]
     chapters = services.session.get_chapters()
 
@@ -50,19 +48,16 @@ def update_chapter(services, current_page: int):
 
 
 def increment_page(services, current_page: int, max_page_number: int):
-    """Move to the next page."""
     if current_page < max_page_number:
         services.session.set_current_page(current_page + 1)
 
 
 def decrement_page(services, current_page: int):
-    """Move to the previous page."""
     if current_page > 1:
         services.session.set_current_page(current_page - 1)
 
 
 def display_page_content(services, filename: str, current_page: int):
-    """Display image and text content for the current page."""
     col1, col2 = st.columns(2)
 
     with col1:
@@ -86,7 +81,6 @@ def display_page_content(services, filename: str, current_page: int):
 def display_navigation_controls(
     services, current_page: int, max_page_number: int, chapters
 ):
-    """Display navigation and chapter selection controls."""
     with st.container():
         left, center, right = st.columns(3, vertical_alignment="bottom")
 
@@ -119,7 +113,6 @@ def display_navigation_controls(
 
 
 def display_chapter_summary(services, chapters):
-    """Display summary of configured chapters."""
     with st.expander("設定済みの章", expanded=False):
         summary_result = services.chapter.get_chapter_summary(chapters)
         if summary_result.success:
@@ -129,7 +122,6 @@ def display_chapter_summary(services, chapters):
 
 
 def validate_and_proceed(services, chapters):
-    """Validate chapter configuration and proceed to next page."""
     finish_chapter_setting = st.button("設定完了")
     if finish_chapter_setting:
         validation_result = services.chapter.validate_chapter_config(chapters)
@@ -142,7 +134,6 @@ def validate_and_proceed(services, chapters):
 
 
 def main():
-    """Main function for the chapter selection page."""
     st.write("select chapter page")
 
     # Get service manager

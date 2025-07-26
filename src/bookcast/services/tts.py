@@ -36,7 +36,9 @@ class TextToSpeechService:
         chunks = text_splitter.split_text(source_script)
         return chunks
 
-    async def _generate(self, semaphore, script: str, chapter: Chapter, index: int) -> pathlib.Path:
+    async def _generate(
+        self, semaphore, script: str, chapter: Chapter, index: int
+    ) -> pathlib.Path:
         async with semaphore:
             response = await self.client.aio.models.generate_content(
                 model="gemini-2.5-flash-preview-tts",

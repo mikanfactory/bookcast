@@ -217,7 +217,9 @@ class ScriptWritingService:
         self.script_model = "gemini-2.0-flash"
 
     @staticmethod
-    async def _generate_script_for_text(podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+    async def _generate_script_for_text(
+        podcast_setting: PodcastSetting, chapter: Chapter
+    ) -> str:
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
         )

@@ -18,4 +18,3 @@ class Chapter(BaseModel):
 
     def __str__(self):
         return f"<Chapter {self.filename} - {self.chapter_number}章>"
-

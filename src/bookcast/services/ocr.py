@@ -230,7 +230,9 @@ class OCRService:
         response = await ocr_agent.run(page_number, base64_image)
         return response["extracted_string"]
 
-    async def _extract_text(self, filename: str, page_number: int, image: Image.Image) -> str:
+    async def _extract_text(
+        self, filename: str, page_number: int, image: Image.Image
+    ) -> str:
         async with self.semaphore:
             extracted_text = await self._extract_text_from_image(page_number, image)
 
@@ -239,20 +241,22 @@ class OCRService:
 
         return extracted_text
 
-    async def _extract_text_from_pdf(self, filename: str):
+    async def _extract_text_from_pdf(self, filename: str) -> int:
         logger.info(f"Extracting text from PDF: {filename}")
 
         pdf_path = build_downloads_path(filename)
         images = convert_from_path(pdf_path)
 
         tasks = [
-            self._extract_text(filename, i + 1, image)
-            for i, image in enumerate(images)
+            self._extract_text(filename, i + 1, image) for i, image in enumerate(images)
         ]
 
         await asyncio.gather(*tasks)
+        return len(tasks)
 
     def process_pdf(self, filename: str):
         logger.info(f"Starting complete PDF processing: {filename}")
-        asyncio.run(self._extract_text_from_pdf(filename))
+        max_page_number = asyncio.run(self._extract_text_from_pdf(filename))
         logger.info(f"Completed complete PDF processing: {filename}")
+
+        return max_page_number
