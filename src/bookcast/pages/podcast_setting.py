@@ -4,9 +4,9 @@ import time
 import streamlit as st
 from streamlit.logger import get_logger
 
-from bookcast.view_models import PodcastSetting
 from bookcast.page import Rooter
 from bookcast.services import get_service_manager
+from bookcast.view_models import PodcastSetting
 from bookcast.voice_option import VoiceOptions
 
 logger = get_logger(__name__)
@@ -20,9 +20,7 @@ def initialize_session(services):
     chapters = services.session.get_chapters()
 
     if not filename or not max_page_number or not chapters.chapters:
-        st.error(
-            "必要なデータが不足しています。プロジェクトの選択と章の設定を完了してください。"
-        )
+        st.error("必要なデータが不足しています。プロジェクトの選択と章の設定を完了してください。")
         st.stop()
 
     return filename, max_page_number, chapters
@@ -35,8 +33,7 @@ def display_voice_selection(voice_options, num_of_people):
     with col1:
         personality1 = st.selectbox(
             "話者1の性格を選択",
-            options=voice_options.formatted_male_options
-            + voice_options.formatted_female_options,
+            options=voice_options.formatted_male_options + voice_options.formatted_female_options,
             index=10,
         )
         personality1_option = voice_options.resolve_voice_option(personality1)
@@ -47,8 +44,7 @@ def display_voice_selection(voice_options, num_of_people):
         disabled = num_of_people == 1
         personality2 = st.selectbox(
             "話者2の性格を選択",
-            options=voice_options.formatted_female_options
-            + voice_options.formatted_male_options,
+            options=voice_options.formatted_female_options + voice_options.formatted_male_options,
             index=6,
             disabled=disabled,
         )
@@ -75,9 +71,7 @@ def validate_voice_selection(personality1_option, personality2_option, num_of_pe
     return True
 
 
-async def generate_podcast_script(
-    services, filename, max_page_number, chapters, podcast_setting
-):
+async def generate_podcast_script(services, filename, max_page_number, chapters, podcast_setting):
     """Generate podcast script using service layer."""
     try:
         result = await services.podcast.generate_podcast_scripts(
@@ -99,9 +93,7 @@ async def generate_podcast_script(
         return None
 
 
-def process_podcast_generation(
-    services, filename, max_page_number, chapters, podcast_setting
-):
+def process_podcast_generation(services, filename, max_page_number, chapters, podcast_setting):
     """Process podcast generation with proper error handling."""
     try:
         # Save podcast setting to session
@@ -116,9 +108,7 @@ def process_podcast_generation(
             asyncio.set_event_loop(loop)
             try:
                 podcast_script = loop.run_until_complete(
-                    generate_podcast_script(
-                        services, filename, max_page_number, chapters, podcast_setting
-                    )
+                    generate_podcast_script(services, filename, max_page_number, chapters, podcast_setting)
                 )
             finally:
                 loop.close()
@@ -159,9 +149,7 @@ def main():
     num_of_people = st.selectbox("人数の選択", options=list(range(1, 3)), index=1)
 
     # Voice selection
-    personality1_option, personality2_option = display_voice_selection(
-        voice_options, num_of_people
-    )
+    personality1_option, personality2_option = display_voice_selection(voice_options, num_of_people)
 
     # Podcast length setting
     length_of_podcast = st.number_input(
@@ -179,26 +167,20 @@ def main():
     submitted = st.button("ポッドキャストを生成開始")
     if submitted:
         # Validate voice selection
-        if not validate_voice_selection(
-            personality1_option, personality2_option, num_of_people
-        ):
+        if not validate_voice_selection(personality1_option, personality2_option, num_of_people):
             return
 
         # Create podcast setting
         podcast_setting = PodcastSetting(
             num_of_people=num_of_people,
             personality1_name=personality1_option.voice_name,
-            personality2_name=personality2_option.voice_name
-            if personality2_option
-            else "",
+            personality2_name=personality2_option.voice_name if personality2_option else "",
             length=length_of_podcast,
             prompt=prompt,
         )
 
         # Process podcast generation
-        if process_podcast_generation(
-            services, filename, max_page_number, chapters, podcast_setting
-        ):
+        if process_podcast_generation(services, filename, max_page_number, chapters, podcast_setting):
             time.sleep(3)
             st.switch_page(Rooter.podcast_script_page())
 

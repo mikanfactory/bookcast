@@ -1,8 +1,7 @@
-from bookcast.services.tts import TextToSpeechService
 from bookcast.config import GEMINI_API_KEY
-from bookcast.path_resolver import resolve_script_path
+from bookcast.path_resolver import resolve_script_path, resolve_text_path
 from bookcast.services.script_writing import Chapter
-from bookcast.path_resolver import resolve_text_path
+from bookcast.services.tts import TextToSpeechService
 
 
 def read_text_from_file(filename: str, page_number: int):

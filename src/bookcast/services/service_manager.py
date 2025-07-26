@@ -28,24 +28,16 @@ class ServiceManager:
     def _initialize_services(self):
         """Initialize all services with their configurations."""
         # PDF Processing Service
-        self._services["pdf_processing"] = OCRService(
-            config=self.config.get("pdf_processing", {})
-        )
+        self._services["pdf_processing"] = OCRService(config=self.config.get("pdf_processing", {}))
 
         # Chapter Service
-        self._services["chapter"] = ChapterService(
-            config=self.config.get("chapter", {})
-        )
+        self._services["chapter"] = ChapterService(config=self.config.get("chapter", {}))
 
         # Podcast Service
-        self._services["podcast"] = ScriptWritingService(
-            config=self.config.get("podcast", {})
-        )
+        self._services["podcast"] = ScriptWritingService(config=self.config.get("podcast", {}))
 
         # Session Service
-        self._services["session"] = SessionService(
-            config=self.config.get("session", {})
-        )
+        self._services["session"] = SessionService(config=self.config.get("session", {}))
 
         # File Service
         self._services["file"] = FileService(config=self.config.get("file", {}))
@@ -97,25 +89,15 @@ class ServiceManager:
         if service_name in self._services:
             # Re-initialize the service
             if service_name == "pdf_processing":
-                self._services[service_name] = OCRService(
-                    config=self.config.get("pdf_processing", {})
-                )
+                self._services[service_name] = OCRService(config=self.config.get("pdf_processing", {}))
             elif service_name == "chapter":
-                self._services[service_name] = ChapterService(
-                    config=self.config.get("chapter", {})
-                )
+                self._services[service_name] = ChapterService(config=self.config.get("chapter", {}))
             elif service_name == "podcast":
-                self._services[service_name] = ScriptWritingService(
-                    config=self.config.get("podcast", {})
-                )
+                self._services[service_name] = ScriptWritingService(config=self.config.get("podcast", {}))
             elif service_name == "session":
-                self._services[service_name] = SessionService(
-                    config=self.config.get("session", {})
-                )
+                self._services[service_name] = SessionService(config=self.config.get("session", {}))
             elif service_name == "file":
-                self._services[service_name] = FileService(
-                    config=self.config.get("file", {})
-                )
+                self._services[service_name] = FileService(config=self.config.get("file", {}))
 
     def get_all_services(self) -> Dict[str, BaseService]:
         """Get all registered services."""

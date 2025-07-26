@@ -1,8 +1,6 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from pydub import AudioSegment
+import numpy as np
 
-from bookcast.path_resolver import resolve_audio_path
 from bookcast.entities import Chapter
 from bookcast.services.audio import AudioService
 

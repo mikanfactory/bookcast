@@ -78,9 +78,7 @@ def display_page_content(services, filename: str, current_page: int):
                 st.error(f"Failed to load text: {text_result.error}")
 
 
-def display_navigation_controls(
-    services, current_page: int, max_page_number: int, chapters
-):
+def display_navigation_controls(services, current_page: int, max_page_number: int, chapters):
     with st.container():
         left, center, right = st.columns(3, vertical_alignment="bottom")
 

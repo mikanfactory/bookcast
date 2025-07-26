@@ -1,18 +1,16 @@
 import asyncio
-import io
-from typing import Annotated
-from logging import getLogger
-
 import base64
-from pdf2image import convert_from_path
-from PIL import Image
-
+import io
 import operator
-from pydantic import BaseModel, Field
+from logging import getLogger
+from typing import Annotated
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
+from pdf2image import convert_from_path
+from PIL import Image
+from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.path_resolver import (
@@ -43,9 +41,7 @@ class OCRResult(BaseModel):
 
 
 class EvaluateResult(BaseModel):
-    is_valid: bool = Field(
-        ..., description="OCRの結果が適切か否か。適切な場合はtrue。不適切ならfalse"
-    )
+    is_valid: bool = Field(..., description="OCRの結果が適切か否か。適切な場合はtrue。不適切ならfalse")
     feedback_message: str = Field(..., description="読み取り結果に対するフィードバック")
 
 
@@ -221,18 +217,14 @@ class OCRService:
         image_data = buffer.getvalue()
         base64_image = base64.b64encode(image_data).decode("utf-8")
 
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
-        )
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
 
         ocr_agent = OCROrchestrator(llm)
 
         response = await ocr_agent.run(page_number, base64_image)
         return response["extracted_string"]
 
-    async def _extract_text(
-        self, filename: str, page_number: int, image: Image.Image
-    ) -> str:
+    async def _extract_text(self, filename: str, page_number: int, image: Image.Image) -> str:
         async with self.semaphore:
             extracted_text = await self._extract_text_from_image(page_number, image)
 
@@ -247,9 +239,7 @@ class OCRService:
         pdf_path = build_downloads_path(filename)
         images = convert_from_path(pdf_path)
 
-        tasks = [
-            self._extract_text(filename, i + 1, image) for i, image in enumerate(images)
-        ]
+        tasks = [self._extract_text(filename, i + 1, image) for i, image in enumerate(images)]
 
         await asyncio.gather(*tasks)
         return len(tasks)

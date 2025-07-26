@@ -1,8 +1,8 @@
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
-
-import os
 
 ENV = os.getenv("ENV", "development")
 

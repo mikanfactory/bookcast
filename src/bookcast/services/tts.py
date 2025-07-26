@@ -1,15 +1,14 @@
 import asyncio
 import pathlib
-
-from google import genai
-from google.genai import types
 import wave
 from logging import getLogger
 
+from google import genai
+from google.genai import types
 from langchain.text_splitter import CharacterTextSplitter
 
-from bookcast.path_resolver import resolve_audio_path, build_audio_directory
 from bookcast.entities import Chapter
+from bookcast.path_resolver import build_audio_directory, resolve_audio_path
 
 logger = getLogger(__name__)
 
@@ -36,9 +35,7 @@ class TextToSpeechService:
         chunks = text_splitter.split_text(source_script)
         return chunks
 
-    async def _generate(
-        self, semaphore, script: str, chapter: Chapter, index: int
-    ) -> pathlib.Path:
+    async def _generate(self, semaphore, script: str, chapter: Chapter, index: int) -> pathlib.Path:
         async with semaphore:
             response = await self.client.aio.models.generate_content(
                 model="gemini-2.5-flash-preview-tts",

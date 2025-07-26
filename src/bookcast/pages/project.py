@@ -31,7 +31,6 @@ def process_uploaded_file(uploaded_file):
 
         # Save the uploaded file
         save_uploaded_file(uploaded_file.getbuffer(), file_name)
-
         logger.info(f"Successfully saved file: {file_name}")
 
         # Process PDF (convert to images and extract text)

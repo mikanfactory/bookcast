@@ -30,9 +30,7 @@ def display_podcast_info(services):
 
         with col2:
             st.write(f"**最大ページ数**: {summary.get('max_page_number', 'N/A')}")
-            st.write(
-                f"**台本生成済み**: {'はい' if summary.get('has_podcast_script') else 'いいえ'}"
-            )
+            st.write(f"**台本生成済み**: {'はい' if summary.get('has_podcast_script') else 'いいえ'}")
 
         # Display podcast settings
         podcast_setting = summary.get("podcast_setting")
@@ -53,11 +51,7 @@ def display_podcast_info(services):
         if podcast_script:
             st.markdown("#### 台本プレビュー")
             with st.expander("台本を表示"):
-                st.text(
-                    podcast_script[:1000] + "..."
-                    if len(podcast_script) > 1000
-                    else podcast_script
-                )
+                st.text(podcast_script[:1000] + "..." if len(podcast_script) > 1000 else podcast_script)
 
             # Download button
             st.download_button(

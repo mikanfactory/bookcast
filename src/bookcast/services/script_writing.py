@@ -1,24 +1,22 @@
 import asyncio
-from typing import List, Annotated
+import operator
 from logging import getLogger
+from typing import Annotated, List
 
 from google import genai
-from pydantic import BaseModel, Field
-import operator
-
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
+from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.view_models import PodcastSetting
+from bookcast.entities import Chapter
 from bookcast.path_resolver import (
     build_script_directory,
     resolve_script_path,
 )
-from bookcast.entities import Chapter
+from bookcast.view_models import PodcastSetting
 
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
@@ -40,9 +38,7 @@ class EvaluateResult(BaseModel):
 
 class State(BaseModel):
     source_text: str = Field(..., description="台本の元となる文章")
-    topics: List[PodcastTopic] = Field(
-        default_factory=list, description="トピックのリスト"
-    )
+    topics: List[PodcastTopic] = Field(default_factory=list, description="トピックのリスト")
     script: str = Field(default="", description="台本")
     feedback_messages: Annotated[list[str], operator.add] = Field(
         default_factory=list, description="作成された台本に対するフィードバック"
@@ -217,19 +213,13 @@ class ScriptWritingService:
         self.script_model = "gemini-2.0-flash"
 
     @staticmethod
-    async def _generate_script_for_text(
-        podcast_setting: PodcastSetting, chapter: Chapter
-    ) -> str:
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
-        )
+    async def _generate_script_for_text(podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
         script_writer_agent = PodCastOrchestrator(llm, podcast_setting)
         response = await script_writer_agent.run(chapter.source_text)
         return response
 
-    async def _generate_chapter_script(
-        self, podcast_setting: PodcastSetting, chapter: Chapter
-    ) -> str:
+    async def _generate_chapter_script(self, podcast_setting: PodcastSetting, chapter: Chapter) -> str:
         async with self.semaphore:
             script = await self._generate_script_for_text(podcast_setting, chapter)
 
@@ -245,4 +235,4 @@ class ScriptWritingService:
     def process(self, podcast_setting: PodcastSetting, chapter: Chapter):
         logger.info(f"Generating script for chapter: {str(chapter)}")
         asyncio.run(self._generate_chapter_script(podcast_setting, chapter))
-        logger.info(f"Script generated.")
+        logger.info("Script generated.")

@@ -1,8 +1,10 @@
 from logging import getLogger
+
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
-from bookcast.path_resolver import resolve_audio_path, resolve_audio_output_path
+
 from bookcast.entities import Chapter
+from bookcast.path_resolver import resolve_audio_output_path, resolve_audio_path
 
 logger = getLogger(__name__)
 
@@ -13,9 +15,7 @@ def normalize(audio, target_dBFS=-16.0):
 
 
 def trim_silence(audio, silence_thresh=-40, min_silence_len=500):
-    nonsilent_ranges = detect_nonsilent(
-        audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh
-    )
+    nonsilent_ranges = detect_nonsilent(audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh)
     if not nonsilent_ranges:
         return audio
     start_trim = nonsilent_ranges[0][0]
@@ -51,9 +51,7 @@ class AudioService:
         return opening
 
     def _coordinate_script(self, chapter: Chapter):
-        script_audios = read_script_audio_files(
-            chapter.filename, chapter.chapter_number
-        )
+        script_audios = read_script_audio_files(chapter.filename, chapter.chapter_number)
         acc = AudioSegment.empty()
         for script_audio in script_audios:
             script_audio = normalize(script_audio)
@@ -64,9 +62,7 @@ class AudioService:
 
     def _coordinate_bgm(self, script_audio_size: int):
         bgm_audio = AudioSegment.from_mp3("resources/bgm.mp3")
-        bgm_looped = (bgm_audio * (script_audio_size // len(bgm_audio) + 1))[
-            :script_audio_size
-        ]
+        bgm_looped = (bgm_audio * (script_audio_size // len(bgm_audio) + 1))[:script_audio_size]
         bgm_quiet = bgm_looped - 13
         return bgm_quiet
 
@@ -80,8 +76,6 @@ class AudioService:
 
         output_audio = jingle_audio + script_with_bgm
 
-        output_path = resolve_audio_output_path(
-            chapter.filename, chapter.chapter_number
-        )
+        output_path = resolve_audio_output_path(chapter.filename, chapter.chapter_number)
         output_audio.export(output_path, format="wav", bitrate="192k")
         logger.info(f"Audio exported to: {output_path}")

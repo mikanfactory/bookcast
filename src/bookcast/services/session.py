@@ -2,9 +2,9 @@ from typing import Any, Optional
 
 import streamlit as st
 
-from bookcast.view_models import Chapters, PodcastSetting
 from bookcast.services.base import BaseService, ServiceResult
 from bookcast.session_state import ChapterPageSessionState, SessionState
+from bookcast.view_models import Chapters, PodcastSetting
 
 
 class SessionService(BaseService):
@@ -116,8 +116,6 @@ class SessionService(BaseService):
             issues.append("No chapters configured")
 
         if issues:
-            return ServiceResult.failure(
-                f"Session validation failed: {', '.join(issues)}"
-            )
+            return ServiceResult.failure(f"Session validation failed: {', '.join(issues)}")
 
         return ServiceResult.success({"valid": True, "issues": []})

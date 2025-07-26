@@ -2,9 +2,9 @@
 Chapter management service for handling chapter selection and validation.
 """
 
-from bookcast.view_models import ChapterConfig, Chapters
 from bookcast.path_resolver import resolve_image_path, resolve_text_path
 from bookcast.services.base import BaseService, ServiceResult
+from bookcast.view_models import ChapterConfig, Chapters
 
 
 class ChapterService(BaseService):
@@ -27,9 +27,7 @@ class ChapterService(BaseService):
 
             # Check if any chapters are selected
             if not chapters.chapters:
-                return ServiceResult.failure(
-                    "章が選択されていません。1つ以上選択してください。"
-                )
+                return ServiceResult.failure("章が選択されていません。1つ以上選択してください。")
 
             # Check if all chapters up to max are configured
             if len(chapters.chapters) < specified_max_chapter:
@@ -65,18 +63,14 @@ class ChapterService(BaseService):
                 return ServiceResult.failure(error_msg)
 
             self._log_info("Chapter configuration is valid")
-            return ServiceResult.success(
-                {"valid": True, "chapters_count": len(chapters.chapters)}
-            )
+            return ServiceResult.success({"valid": True, "chapters_count": len(chapters.chapters)})
 
         except Exception as e:
             error_msg = f"Failed to validate chapter configuration: {str(e)}"
             self._log_error(error_msg)
             return ServiceResult.failure(error_msg)
 
-    def add_chapter(
-        self, chapters: Chapters, chapter_num: int, page_number: int
-    ) -> ServiceResult:
+    def add_chapter(self, chapters: Chapters, chapter_num: int, page_number: int) -> ServiceResult:
         """
         Add a new chapter configuration.
 
@@ -93,9 +87,7 @@ class ChapterService(BaseService):
 
             config = ChapterConfig(page_number=page_number)
             chapters.chapters[chapter_num] = config
-            chapters.specified_max_chapter = max(
-                chapters.specified_max_chapter, chapter_num
-            )
+            chapters.specified_max_chapter = max(chapters.specified_max_chapter, chapter_num)
 
             self._log_info(f"Successfully added chapter {chapter_num}")
             return ServiceResult.success(chapters)
@@ -164,9 +156,7 @@ class ChapterService(BaseService):
             self._log_error(error_msg)
             return ServiceResult.failure(error_msg)
 
-    def get_chapter_page_ranges(
-        self, chapters: Chapters, max_page_number: int
-    ) -> ServiceResult:
+    def get_chapter_page_ranges(self, chapters: Chapters, max_page_number: int) -> ServiceResult:
         """
         Calculate page ranges for each chapter.
 
@@ -226,14 +216,10 @@ class ChapterService(BaseService):
             image_path = resolve_image_path(filename, page_number)
 
             if not text_path.exists():
-                return ServiceResult.failure(
-                    f"Text file not found for page {page_number}"
-                )
+                return ServiceResult.failure(f"Text file not found for page {page_number}")
 
             if not image_path.exists():
-                return ServiceResult.failure(
-                    f"Image file not found for page {page_number}"
-                )
+                return ServiceResult.failure(f"Image file not found for page {page_number}")
 
             with open(text_path, "r", encoding="utf-8") as f:
                 text_content = f.read()

@@ -1,11 +1,11 @@
 import logging
 
+from bookcast.path_resolver import resolve_text_path
 from bookcast.services.script_writing import (
-    ScriptWritingService,
     Chapter,
     PodcastSetting,
+    ScriptWritingService,
 )
-from bookcast.path_resolver import resolve_text_path
 
 logger = logging.getLogger(__name__)
 
