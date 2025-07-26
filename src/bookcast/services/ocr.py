@@ -163,7 +163,8 @@ class OCROrchestrator:
                 "feedback_messages": [result.feedback_message],
             }
 
-    def _should_retry_or_continue(self, state: State):
+    @staticmethod
+    def _should_retry_or_continue(state: State):
         if state.is_valid:
             return True
         elif state.retry_count < MAX_RETRY_COUNT:
@@ -195,7 +196,8 @@ class OCRService:
     def __init__(self):
         self.semaphore = asyncio.Semaphore(10)
 
-    def _save_text(self, filename: str, page_number: int, extracted_text: str):
+    @staticmethod
+    def _save_text(filename: str, page_number: int, extracted_text: str):
         text_dir = build_text_directory(filename)
         text_dir.mkdir(parents=True, exist_ok=True)
 
@@ -203,7 +205,8 @@ class OCRService:
         with open(text_path, "w", encoding="utf-8") as f:
             f.write(extracted_text)
 
-    def _save_image(self, filename: str, page_number: int, image: Image.Image):
+    @staticmethod
+    def _save_image(filename: str, page_number: int, image: Image.Image):
         image_dir = build_image_directory(filename)
         image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -211,11 +214,13 @@ class OCRService:
         image.save(image_path, "PNG")
 
     @staticmethod
-    async def _extract_text_from_image(page_number: int, image: Image.Image) -> str:
-        buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
-        image_data = buffer.getvalue()
-        base64_image = base64.b64encode(image_data).decode("utf-8")
+    def image_to_base64_png(image: Image.Image) -> str:
+        with io.BytesIO() as buf:
+            image.save(buf, format="PNG")
+            return base64.b64encode(buf.getvalue()).decode()
+
+    async def _extract_text_from_image(self, page_number: int, image: Image.Image) -> str:
+        base64_image = self.image_to_base64_png(image)
 
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
 

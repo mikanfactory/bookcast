@@ -3,7 +3,6 @@ import logging
 from bookcast.path_resolver import resolve_text_path
 from bookcast.services.script_writing import (
     Chapter,
-    PodcastSetting,
     ScriptWritingService,
 )
 
@@ -31,19 +30,11 @@ def main():
     filename = "chapter3.pdf"
     service = ScriptWritingService()
 
-    podcast_setting = PodcastSetting(
-        num_of_people=2,
-        personality1_name="Alnilam",
-        personality2_name="Autonoe",
-        length=15,
-        prompt=None,
-    )
-
     texts = read_texts(filename, 0, 36)
 
     chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
 
-    result = service.process(podcast_setting, chapter)
+    result = service.process(chapter)
     print(result)
 
 

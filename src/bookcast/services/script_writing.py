@@ -16,7 +16,6 @@ from bookcast.path_resolver import (
     build_script_directory,
     resolve_script_path,
 )
-from bookcast.view_models import PodcastSetting
 
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
@@ -78,9 +77,8 @@ def _format_topics(topics: List[PodcastTopic]) -> str:
 
 
 class PodCastScriptWriter:
-    def __init__(self, llm, podcast_setting: PodcastSetting):
+    def __init__(self, llm):
         self.llm = llm
-        self.podcast_setting = podcast_setting
 
     async def run(self, state: State) -> str:
         system_prompt = """
@@ -145,10 +143,10 @@ class PodCastScriptEvaluator:
 
 
 class PodCastOrchestrator:
-    def __init__(self, llm, podcast_setting: PodcastSetting):
+    def __init__(self, llm):
         self.llm = llm
         self.topic_searcher = PodCastTopicSearcher(llm)
-        self.script_writer = PodCastScriptWriter(llm, podcast_setting)
+        self.script_writer = PodCastScriptWriter(llm)
         self.script_evaluator = PodCastScriptEvaluator(llm)
         self.graph = self._create_graph()
 
@@ -213,15 +211,15 @@ class ScriptWritingService:
         self.script_model = "gemini-2.0-flash"
 
     @staticmethod
-    async def _generate_script_for_text(podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+    async def _generate_script_for_text(chapter: Chapter) -> str:
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
-        script_writer_agent = PodCastOrchestrator(llm, podcast_setting)
+        script_writer_agent = PodCastOrchestrator(llm)
         response = await script_writer_agent.run(chapter.source_text)
         return response
 
-    async def _generate_chapter_script(self, podcast_setting: PodcastSetting, chapter: Chapter) -> str:
+    async def _generate_chapter_script(self, chapter: Chapter) -> str:
         async with self.semaphore:
-            script = await self._generate_script_for_text(podcast_setting, chapter)
+            script = await self._generate_script_for_text(chapter)
 
         script_dir = build_script_directory(chapter.filename)
         script_dir.mkdir(parents=True, exist_ok=True)
@@ -232,7 +230,7 @@ class ScriptWritingService:
 
         return script
 
-    def process(self, podcast_setting: PodcastSetting, chapter: Chapter):
+    def process(self, chapter: Chapter):
         logger.info(f"Generating script for chapter: {str(chapter)}")
-        asyncio.run(self._generate_chapter_script(podcast_setting, chapter))
+        asyncio.run(self._generate_chapter_script(chapter))
         logger.info("Script generated.")

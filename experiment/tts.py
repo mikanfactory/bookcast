@@ -1,4 +1,3 @@
-from bookcast.config import GEMINI_API_KEY
 from bookcast.path_resolver import resolve_script_path, resolve_text_path
 from bookcast.services.script_writing import Chapter
 from bookcast.services.tts import TextToSpeechService
@@ -30,7 +29,7 @@ def main():
     texts = read_texts(filename, 0, 36)
     chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
 
-    service = TextToSpeechService(api_key=GEMINI_API_KEY)
+    service = TextToSpeechService()
     service.generate_audio(script_text, chapter)
 
     # result = service.split_script(script_text)

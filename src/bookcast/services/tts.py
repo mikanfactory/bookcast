@@ -7,6 +7,7 @@ from google import genai
 from google.genai import types
 from langchain.text_splitter import CharacterTextSplitter
 
+from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter
 from bookcast.path_resolver import build_audio_directory, resolve_audio_path
 
@@ -22,8 +23,8 @@ def save_wave_file(filename, pcm, channels=1, rate=24000, sample_width=2) -> Non
 
 
 class TextToSpeechService:
-    def __init__(self, api_key: str):
-        self.client = genai.Client(api_key=api_key)
+    def __init__(self):
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
 
     @staticmethod
     def split_script(source_script: str) -> list[str]:
