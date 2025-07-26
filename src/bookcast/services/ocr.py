@@ -1,13 +1,11 @@
 import asyncio
 import base64
 import io
-import operator
 from logging import getLogger
-from typing import Annotated
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import END, StateGraph
+from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from pdf2image import convert_from_path
 from PIL import Image
@@ -23,18 +21,14 @@ from bookcast.path_resolver import (
 )
 
 logger = getLogger(__name__)
-MAX_RETRY_COUNT = 3
 
 
 class State(BaseModel):
     page_number: int = Field(..., description="画像のページ番号")
     base64_image: str = Field(default=None, description="対象の画像")
     extracted_string: str = Field(default="", description="画像から読み取れた文字列")
-    feedback_messages: Annotated[list[str], operator.add] = Field(
-        default=[], description="読み取り結果に対するフィードバック"
-    )
-    retry_count: int = Field(default=0, description="再実行回数")
     is_valid: bool = Field(default=False, description="適切か否か")
+    calibrated_string: str = Field(default="", description="校正後の文字列")
 
 
 class OCRResult(BaseModel):
@@ -43,7 +37,7 @@ class OCRResult(BaseModel):
 
 class EvaluateResult(BaseModel):
     is_valid: bool = Field(..., description="OCRの結果が適切か否か。適切な場合はtrue。不適切ならfalse")
-    feedback_message: str = Field(..., description="読み取り結果に対するフィードバック")
+    calibrated_string: str = Field(..., description="校正後の文字列")
 
 
 def format_reflections(reflections: list[str]) -> str:
@@ -71,10 +65,6 @@ class OCRExecutor:
 - ページ番号
 """
 
-        if state.retry_count > 0:
-            reflection_text = format_reflections(state.feedback_messages)
-            prompt_text += f"\n\n実行する際に、以下の過去の他社からのフィードバックを考慮すること。\n{reflection_text}"
-
         message = ChatPromptTemplate(
             [
                 (
@@ -96,13 +86,13 @@ class OCRExecutor:
         return await chain.ainvoke({})
 
 
-class OCRResultEvaluator:
+class OCRResultEditor:
     def __init__(self, llm):
         self.llm = llm
 
     async def run(self, state: State) -> EvaluateResult:
         prompt_text = """
-あなたはOCRの結果の検証を行うAIです。
+あなたはOCRの結果の校正を行うAIです。
 このOCRの結果は次のものを対象としています。
 抽出したいもの:
 - 本文
@@ -114,8 +104,7 @@ class OCRResultEvaluator:
 - ページ番号
 あなたはまず画像から文章を読み取り、その後に受け取った文章と照らし合わせてください。
 適切であればtrueを返してください。
-不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。
-またフィードバックにはどこが読み取れていないか、具体例を入れるようにしてください。
+不適切であれば、校正を行い、その文字列を返してください。
 OCR結果: {extracted_string}
 """
 
@@ -144,7 +133,7 @@ class OCROrchestrator:
     def __init__(self, llm):
         self.llm = llm
         self.ocr_agent = OCRExecutor(llm)
-        self.guardian = OCRResultEvaluator(llm)
+        self.evaluator = OCRResultEditor(llm)
         self.graph = self._create_graph()
 
     async def _execute_ocr(self, state: State) -> dict:
@@ -153,44 +142,34 @@ class OCROrchestrator:
             "extracted_string": result.extracted_string,
         }
 
-    async def _evaluate_ocr_result(self, state: State) -> dict:
-        result = await self.guardian.run(state)
+    async def _calibrate_result(self, state: State) -> dict:
+        result = await self.evaluator.run(state)
         if result.is_valid:
             return {"is_valid": True}
         else:
             return {
                 "is_valid": False,
-                "retry_count": state.retry_count + 1,
-                "feedback_messages": [result.feedback_message],
+                "calibrated_string": result.calibrated_string,
             }
-
-    @staticmethod
-    def _should_retry_or_continue(state: State) -> bool:
-        if state.is_valid:
-            return True
-        elif state.retry_count < MAX_RETRY_COUNT:
-            return False
-        else:
-            return True
 
     def _create_graph(self) -> CompiledStateGraph:
         graph = StateGraph(State)
         graph.add_node("execute_ocr", self._execute_ocr)
-        graph.add_node("evaluate_ocr_result", self._evaluate_ocr_result)
+        graph.add_node("calibrate_result", self._calibrate_result)
 
         graph.set_entry_point("execute_ocr")
-        graph.add_edge("execute_ocr", "evaluate_ocr_result")
-        graph.add_conditional_edges(
-            "evaluate_ocr_result",
-            self._should_retry_or_continue,
-            {True: END, False: "execute_ocr"},
-        )
+        graph.add_edge("execute_ocr", "calibrate_result")
 
         return graph.compile()
 
-    async def run(self, page_number: int, base64_image: str) -> OCRResult:
+    async def run(self, page_number: int, base64_image: str) -> str:
         state = State(page_number=page_number, base64_image=base64_image)
-        return await self.graph.ainvoke(state)
+        result = await self.graph.ainvoke(state)
+
+        if result["is_valid"]:
+            return result["extracted_string"]
+        else:
+            return result["calibrated_string"]
 
 
 class OCRService:
@@ -228,7 +207,7 @@ class OCRService:
         ocr_agent = OCROrchestrator(llm)
 
         response = await ocr_agent.run(page_number, base64_image)
-        return response["extracted_string"]
+        return response
 
     async def _extract_text(self, filename: str, page_number: int, image: Image.Image) -> str:
         async with self.semaphore:
