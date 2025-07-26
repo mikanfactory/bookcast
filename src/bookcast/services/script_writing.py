@@ -8,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langsmith import traceable
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
@@ -46,10 +47,11 @@ class State(BaseModel):
     is_valid: bool = Field(default=False, description="適切か否か")
 
 
-class PodCastTopicSearcher:
+class PodcastTopicSearcher:
     def __init__(self, llm):
         self.llm = llm
 
+    @traceable(name="PodcastTopicSearcher")
     async def run(self, state: State) -> TopicSearchResult:
         prompt_text = """
 あなたはトピックを抽出する専門家です。
@@ -76,10 +78,11 @@ def _format_topics(topics: List[PodcastTopic]) -> str:
     return acc
 
 
-class PodCastScriptWriter:
+class PodcastScriptWriter:
     def __init__(self, llm):
         self.llm = llm
 
+    @traceable(name="PodcastScriptWriter")
     async def run(self, state: State) -> str:
         system_prompt = """
 あなたはポッドキャストの台本を作成する専門家です。
@@ -113,10 +116,11 @@ Speaker2: 本当ですね。ちょっと暑いくらいですね。
         return await chain.ainvoke({"source_text": state.source_text})
 
 
-class PodCastScriptEvaluator:
+class PodcastScriptEvaluator:
     def __init__(self, llm):
         self.llm = llm
 
+    @traceable(name="PodcastScriptEvaluator")
     async def run(self, state: State) -> EvaluateResult:
         topics = _format_topics(state.topics)
         prompt_text = f"""
@@ -142,12 +146,12 @@ class PodCastScriptEvaluator:
         return await chain.ainvoke({"script": state.script})
 
 
-class PodCastOrchestrator:
+class PodcastOrchestrator:
     def __init__(self, llm):
         self.llm = llm
-        self.topic_searcher = PodCastTopicSearcher(llm)
-        self.script_writer = PodCastScriptWriter(llm)
-        self.script_evaluator = PodCastScriptEvaluator(llm)
+        self.topic_searcher = PodcastTopicSearcher(llm)
+        self.script_writer = PodcastScriptWriter(llm)
+        self.script_evaluator = PodcastScriptEvaluator(llm)
         self.graph = self._create_graph()
 
     async def _search_topics(self, state: State) -> dict:
@@ -212,7 +216,7 @@ class ScriptWritingService:
     @staticmethod
     async def _generate_script_for_text(chapter: Chapter) -> str:
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
-        script_writer_agent = PodCastOrchestrator(llm)
+        script_writer_agent = PodcastOrchestrator(llm)
         response = await script_writer_agent.run(chapter.source_text)
         return response
 

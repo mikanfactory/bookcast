@@ -1,8 +1,10 @@
 import logging
 
+import click
+
+from bookcast.entities import Chapter
 from bookcast.path_resolver import resolve_text_path
 from bookcast.services.script_writing import (
-    Chapter,
     ScriptWritingService,
 )
 
@@ -26,16 +28,16 @@ def read_texts(filename: str, start_page: int, end_page: int):
     return acc
 
 
-def main():
-    filename = "chapter3.pdf"
+@click.command()
+@click.argument("filename", type=str)
+def main(filename):
     service = ScriptWritingService()
 
     texts = read_texts(filename, 0, 36)
 
     chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
 
-    result = service.process(chapter)
-    print(result)
+    service.process(chapter)
 
 
 if __name__ == "__main__":

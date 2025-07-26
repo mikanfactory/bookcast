@@ -1,12 +1,13 @@
+import click
+
 from bookcast.services.ocr import OCRService
 
 
-def main():
-    filename = "chapter3.pdf"
+@click.command()
+@click.argument("filename", type=str)
+def main(filename: str):
     service = OCRService()
-
-    result = service.process_pdf(filename)
-    print(result)
+    service.process_pdf(filename)
 
 
 if __name__ == "__main__":

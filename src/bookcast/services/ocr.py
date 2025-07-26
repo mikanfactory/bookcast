@@ -7,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langsmith import traceable
 from pdf2image import convert_from_path
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -48,10 +49,17 @@ def format_reflections(reflections: list[str]) -> str:
     return acc
 
 
+def drop_base64_image(state: dict) -> dict:
+    filtered = dict(state)
+    filtered.pop("base64_image", None)
+    return filtered
+
+
 class OCRExecutor:
     def __init__(self, llm):
         self.llm = llm
 
+    @traceable(name="OCRExecutor", process_inputs=drop_base64_image)
     async def run(self, state: State) -> OCRResult:
         prompt_text = """
 あなたはOCRを行うAIです。この画像に含まれる文字を抽出してください。
@@ -90,6 +98,7 @@ class OCRResultEditor:
     def __init__(self, llm):
         self.llm = llm
 
+    @traceable(name="OCRResultEditor", process_inputs=drop_base64_image)
     async def run(self, state: State) -> EvaluateResult:
         prompt_text = """
 あなたはOCRの結果の校正を行うAIです。

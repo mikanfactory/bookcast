@@ -94,6 +94,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "click" },
     { name = "freezegun" },
     { name = "ipython" },
     { name = "matplotlib" },
@@ -124,6 +125,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "click", specifier = ">=8.2.1" },
     { name = "freezegun", specifier = ">=1.5.2" },
     { name = "ipython", specifier = ">=9.3.0" },
     { name = "matplotlib", specifier = ">=3.10.3" },

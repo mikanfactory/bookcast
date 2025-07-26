@@ -1,3 +1,5 @@
+import click
+
 from bookcast.path_resolver import resolve_script_path, resolve_text_path
 from bookcast.services.script_writing import Chapter
 from bookcast.services.tts import TextToSpeechService
@@ -20,8 +22,9 @@ def read_texts(filename: str, start_page: int, end_page: int):
     return acc
 
 
-def main():
-    filename = "chapter3.pdf"
+@click.command()
+@click.argument("filename", type=str)
+def main(filename: str):
     script_path = resolve_script_path(filename, 1)
     with open(script_path, "r") as f:
         script_text = f.read()
