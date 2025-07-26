@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Optional, Annotated
+from typing import List, Annotated
 from logging import getLogger
 
 from google import genai
@@ -18,7 +18,6 @@ from bookcast.path_resolver import (
     build_script_directory,
     resolve_script_path,
 )
-from bookcast.services.base import BaseService
 from bookcast.entities import Chapter
 
 logger = getLogger(__name__)
@@ -52,7 +51,7 @@ class State(BaseModel):
     is_valid: bool = Field(default=False, description="適切か否か")
 
 
-class PodCastTopicSearcher(object):
+class PodCastTopicSearcher:
     def __init__(self, llm):
         self.llm = llm
 
@@ -82,7 +81,7 @@ def _format_topics(topics: List[PodcastTopic]) -> str:
     return acc
 
 
-class PodCastScriptWriter(object):
+class PodCastScriptWriter:
     def __init__(self, llm, podcast_setting: PodcastSetting):
         self.llm = llm
         self.podcast_setting = podcast_setting
@@ -120,7 +119,7 @@ Speaker2: 本当ですね。ちょっと暑いくらいですね。
         return await chain.ainvoke({"source_text": state.source_text})
 
 
-class PodCastScriptEvaluator(object):
+class PodCastScriptEvaluator:
     def __init__(self, llm):
         self.llm = llm
 
@@ -149,7 +148,7 @@ class PodCastScriptEvaluator(object):
         return await chain.ainvoke({"script": state.script})
 
 
-class PodCastOrchestrator(object):
+class PodCastOrchestrator:
     def __init__(self, llm, podcast_setting: PodcastSetting):
         self.llm = llm
         self.topic_searcher = PodCastTopicSearcher(llm)
@@ -211,17 +210,14 @@ class PodCastOrchestrator(object):
         return result["script"]
 
 
-class ScriptWritingService(BaseService):
-    def __init__(self, config: Optional[dict] = None):
-        super().__init__(config)
+class ScriptWritingService:
+    def __init__(self):
         self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
         self.semaphore = asyncio.Semaphore(10)
         self.script_model = "gemini-2.0-flash"
 
     @staticmethod
-    async def _generate_script_for_text(
-        podcast_setting: PodcastSetting, chapter: Chapter
-    ) -> str:
+    async def _generate_script_for_text(podcast_setting: PodcastSetting, chapter: Chapter) -> str:
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01
         )

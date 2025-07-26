@@ -1,6 +1,6 @@
 import asyncio
 import io
-from typing import Optional, Annotated
+from typing import Annotated
 from logging import getLogger
 
 import base64
@@ -22,7 +22,6 @@ from bookcast.path_resolver import (
     resolve_image_path,
     resolve_text_path,
 )
-from bookcast.services.base import BaseService, ServiceResult
 
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
@@ -58,7 +57,7 @@ def format_reflections(reflections: list[str]) -> str:
     return acc
 
 
-class OCRExecutor(object):
+class OCRExecutor:
     def __init__(self, llm):
         self.llm = llm
 
@@ -100,7 +99,7 @@ class OCRExecutor(object):
         return await chain.ainvoke({})
 
 
-class OCRResultEvaluator(object):
+class OCRResultEvaluator:
     def __init__(self, llm):
         self.llm = llm
 
@@ -144,7 +143,7 @@ OCR結果: {extracted_string}
         return await chain.ainvoke({"extracted_string": state.extracted_string})
 
 
-class OCROrchestrator(object):
+class OCROrchestrator:
     def __init__(self, llm):
         self.llm = llm
         self.ocr_agent = OCRExecutor(llm)
@@ -196,34 +195,27 @@ class OCROrchestrator(object):
         return await self.graph.ainvoke(state)
 
 
-class OCRService(BaseService):
-    def __init__(self, config: Optional[dict] = None):
-        super().__init__(config)
+class OCRService:
+    def __init__(self):
         self.semaphore = asyncio.Semaphore(10)
 
-    def convert_pdf_to_images(self, filename: str) -> ServiceResult:
-        self._log_info(f"Converting PDF to images: {filename}")
+    def _save_text(self, filename: str, page_number: int, extracted_text: str):
+        text_dir = build_text_directory(filename)
+        text_dir.mkdir(parents=True, exist_ok=True)
 
-        pdf_path = build_downloads_path(filename)
-        if not pdf_path.exists():
-            return ServiceResult.failure(f"PDF file not found: {filename}")
+        text_path = resolve_text_path(filename, page_number)
+        with open(text_path, "w", encoding="utf-8") as f:
+            f.write(extracted_text)
 
-        images = convert_from_path(pdf_path)
-
+    def _save_image(self, filename: str, page_number: int, image: Image.Image):
         image_dir = build_image_directory(filename)
         image_dir.mkdir(parents=True, exist_ok=True)
 
-        for i, image in enumerate(images):
-            page_number = i + 1
-            image_path = resolve_image_path(filename, page_number)
-            image.save(image_path, "PNG")
+        image_path = resolve_image_path(filename, page_number)
+        image.save(image_path, "PNG")
 
-        self._log_info(f"Successfully converted {len(images)} pages to images")
-        return ServiceResult.success(images)
-
-    async def _extract_text_from_image(
-        self, page_number: int, image: Image.Image
-    ) -> str:
+    @staticmethod
+    async def _extract_text_from_image(page_number: int, image: Image.Image) -> str:
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         image_data = buffer.getvalue()
@@ -238,58 +230,29 @@ class OCRService(BaseService):
         response = await ocr_agent.run(page_number, base64_image)
         return response["extracted_string"]
 
-    async def _extract_and_save_text(
-        self, filename: str, page_number: int, image: Image.Image
-    ) -> str:
+    async def _extract_text(self, filename: str, page_number: int, image: Image.Image) -> str:
         async with self.semaphore:
             extracted_text = await self._extract_text_from_image(page_number, image)
 
-        text_dir = build_text_directory(filename)
-        text_dir.mkdir(parents=True, exist_ok=True)
-
-        text_path = resolve_text_path(filename, page_number)
-        with open(text_path, "w", encoding="utf-8") as f:
-            f.write(extracted_text)
+        self._save_text(filename, page_number, extracted_text)
+        self._save_image(filename, page_number, image)
 
         return extracted_text
 
-    async def extract_text_from_pdf(self, filename: str) -> ServiceResult:
-        self._log_info(f"Extracting text from PDF: {filename}")
+    async def _extract_text_from_pdf(self, filename: str):
+        logger.info(f"Extracting text from PDF: {filename}")
 
         pdf_path = build_downloads_path(filename)
-        if not pdf_path.exists():
-            return ServiceResult.failure(f"PDF file not found: {filename}")
-
         images = convert_from_path(pdf_path)
 
         tasks = [
-            self._extract_and_save_text(filename, i + 1, image)
+            self._extract_text(filename, i + 1, image)
             for i, image in enumerate(images)
         ]
 
-        texts = await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
-        self._log_info(f"Successfully extracted text from {len(texts)} pages")
-        return ServiceResult.success(texts)
-
-    def process_pdf(self, filename: str) -> ServiceResult:
-        self._log_info(f"Starting complete PDF processing: {filename}")
-
-        # Convert PDF to images
-        images_result = self.convert_pdf_to_images(filename)
-        if not images_result.success:
-            return images_result
-
-        # Extract text from images
-        text_result = asyncio.run(self.extract_text_from_pdf(filename))
-        if not text_result.success:
-            return text_result
-
-        summary = {
-            "filename": filename,
-            "pages_processed": len(images_result.data),
-            "texts_extracted": len(text_result.data),
-        }
-
-        self._log_info(f"PDF processing completed successfully: {summary}")
-        return ServiceResult.success(summary)
+    def process_pdf(self, filename: str):
+        logger.info(f"Starting complete PDF processing: {filename}")
+        asyncio.run(self._extract_text_from_pdf(filename))
+        logger.info(f"Completed complete PDF processing: {filename}")
