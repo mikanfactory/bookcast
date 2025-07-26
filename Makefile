@@ -1,6 +1,6 @@
 .PHONY: lint
 lint:
-	uv run ruff check src experiment tests
+	uv run ruff check src experiment tests --fix
 
 .PHONY: format
 format:

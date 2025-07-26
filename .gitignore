@@ -10,4 +10,7 @@ wheels/
 
 # Virtual environments
 .venv
+
 downloads
+chapter.json
+

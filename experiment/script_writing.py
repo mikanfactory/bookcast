@@ -1,43 +1,29 @@
+import json
 import logging
 
 import click
+from langsmith import tracing_context
 
-from bookcast.entities import Chapter
-from bookcast.path_resolver import resolve_text_path
-from bookcast.services.script_writing import (
-    ScriptWritingService,
-)
+from bookcast.entities import build_chapters
+from bookcast.services.script_writing import ScriptWritingService
 
 logger = logging.getLogger(__name__)
 
 
-def read_text_from_file(filename: str, page_number: int):
-    file_path = resolve_text_path(filename, page_number + 1)
-    with open(file_path, "r") as f:
-        text = f.read()
-
-    return text
-
-
-def read_texts(filename: str, start_page: int, end_page: int):
-    acc = []
-    for i in range(start_page, end_page + 1):
-        text = read_text_from_file(filename, i)
-        acc.append(text)
-
-    return acc
-
-
 @click.command()
-@click.argument("filename", type=str)
-def main(filename):
+@click.argument("config", type=str)
+@click.option("--trace", "-t", is_flag=True, default=False)
+def main(config: str, trace: bool = False):
     service = ScriptWritingService()
 
-    texts = read_texts(filename, 0, 36)
+    with open(config, "r") as f:
+        config = json.load(f)
 
-    chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
+    chapters = build_chapters(config)
 
-    service.process(chapter)
+    logger.info(f"Langsmith tracing enabled: {trace}")
+    with tracing_context(enabled=trace):
+        service.process(chapters)
 
 
 if __name__ == "__main__":

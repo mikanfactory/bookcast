@@ -1,44 +1,28 @@
+import json
+
 import click
 
-from bookcast.path_resolver import resolve_script_path, resolve_text_path
-from bookcast.services.script_writing import Chapter
+from bookcast.entities import build_chapters
+from bookcast.path_resolver import resolve_script_path
 from bookcast.services.tts import TextToSpeechService
 
 
-def read_text_from_file(filename: str, page_number: int):
-    file_path = resolve_text_path(filename, page_number + 1)
-    with open(file_path, "r") as f:
-        text = f.read()
-
-    return text
-
-
-def read_texts(filename: str, start_page: int, end_page: int):
-    acc = []
-    for i in range(start_page, end_page + 1):
-        text = read_text_from_file(filename, i)
-        acc.append(text)
-
-    return acc
-
-
 @click.command()
-@click.argument("filename", type=str)
-def main(filename: str):
-    script_path = resolve_script_path(filename, 1)
-    with open(script_path, "r") as f:
-        script_text = f.read()
+@click.argument("config", type=str)
+def main(config: str):
+    with open(config, "r") as f:
+        config = json.load(f)
 
-    texts = read_texts(filename, 0, 36)
-    chapter = Chapter(filename=filename, chapter_number=1, extracted_texts=texts)
+    chapters = build_chapters(config)
+    for chapter in chapters:
+        script_path = resolve_script_path(chapter.filename, chapter.chapter_number)
+        with open(script_path, "r") as f:
+            script_text = f.read()
+
+        chapter.script = script_text
 
     service = TextToSpeechService()
-    service.generate_audio(script_text, chapter)
-
-    # result = service.split_script(script_text)
-    # for r in result:
-    #     print("*************************************************")
-    #     print(r)
+    service.generate_audio(chapters)
 
 
 if __name__ == "__main__":

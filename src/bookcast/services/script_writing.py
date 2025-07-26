@@ -122,6 +122,9 @@ class PodcastScriptEvaluator:
 
     @traceable(name="PodcastScriptEvaluator")
     async def run(self, state: State) -> EvaluateResult:
+        if state.script is None:
+            return EvaluateResult(is_valid=False, feedback_message="台本がありません。作成してください。")
+
         topics = _format_topics(state.topics)
         prompt_text = f"""
 あなたはポッドキャストの台本を評価する専門家です。
@@ -214,15 +217,16 @@ class ScriptWritingService:
         self.semaphore = asyncio.Semaphore(10)
 
     @staticmethod
-    async def _generate_script_for_text(chapter: Chapter) -> str:
+    async def _generate(chapter: Chapter) -> str:
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
         script_writer_agent = PodcastOrchestrator(llm)
         response = await script_writer_agent.run(chapter.source_text)
         return response
 
-    async def _generate_chapter_script(self, chapter: Chapter) -> str:
+    async def _generate_script(self, chapter: Chapter) -> str:
         async with self.semaphore:
-            script = await self._generate_script_for_text(chapter)
+            logger.info(f"Generating script for chapter: {str(chapter)}")
+            script = await self._generate(chapter)
 
         script_dir = build_script_directory(chapter.filename)
         script_dir.mkdir(parents=True, exist_ok=True)
@@ -233,7 +237,10 @@ class ScriptWritingService:
 
         return script
 
-    def process(self, chapter: Chapter) -> None:
-        logger.info(f"Generating script for chapter: {str(chapter)}")
-        asyncio.run(self._generate_chapter_script(chapter))
+    async def _generate_scripts(self, chapters: list[Chapter]) -> None:
+        tasks = [self._generate_script(chapter) for chapter in chapters]
+        await asyncio.gather(*tasks)
+
+    def process(self, chapters: list[Chapter]) -> None:
+        asyncio.run(self._generate_scripts(chapters))
         logger.info("Script generated.")
