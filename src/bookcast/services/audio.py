@@ -37,7 +37,8 @@ def read_script_audio_files(filename, chapter_number):
 
 
 class AudioService:
-    def _coordinate_jingle(self):
+    @staticmethod
+    def _coordinate_jingle():
         jingle_audio = AudioSegment.from_mp3("resources/jingle.mp3")
         jingle_audio = normalize(jingle_audio)
         jingle_audio = trim_silence(jingle_audio)
@@ -50,7 +51,8 @@ class AudioService:
 
         return opening
 
-    def _coordinate_script(self, chapter: Chapter):
+    @staticmethod
+    def _coordinate_script(chapter: Chapter):
         script_audios = read_script_audio_files(chapter.filename, chapter.chapter_number)
         acc = AudioSegment.empty()
         for script_audio in script_audios:
@@ -60,7 +62,8 @@ class AudioService:
 
         return acc
 
-    def _coordinate_bgm(self, script_audio_size: int):
+    @staticmethod
+    def _coordinate_bgm(script_audio_size: int):
         bgm_audio = AudioSegment.from_mp3("resources/bgm.mp3")
         bgm_looped = (bgm_audio * (script_audio_size // len(bgm_audio) + 1))[:script_audio_size]
         bgm_quiet = bgm_looped - 13
