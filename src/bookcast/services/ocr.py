@@ -8,6 +8,7 @@ from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from pdf2image import convert_from_path
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -146,13 +147,13 @@ class OCROrchestrator:
         self.guardian = OCRResultEvaluator(llm)
         self.graph = self._create_graph()
 
-    async def _execute_ocr(self, state: State):
+    async def _execute_ocr(self, state: State) -> dict:
         result = await self.ocr_agent.run(state)
         return {
             "extracted_string": result.extracted_string,
         }
 
-    async def _evaluate_ocr_result(self, state: State):
+    async def _evaluate_ocr_result(self, state: State) -> dict:
         result = await self.guardian.run(state)
         if result.is_valid:
             return {"is_valid": True}
@@ -164,7 +165,7 @@ class OCROrchestrator:
             }
 
     @staticmethod
-    def _should_retry_or_continue(state: State):
+    def _should_retry_or_continue(state: State) -> bool:
         if state.is_valid:
             return True
         elif state.retry_count < MAX_RETRY_COUNT:
@@ -172,7 +173,7 @@ class OCROrchestrator:
         else:
             return True
 
-    def _create_graph(self):
+    def _create_graph(self) -> CompiledStateGraph:
         graph = StateGraph(State)
         graph.add_node("execute_ocr", self._execute_ocr)
         graph.add_node("evaluate_ocr_result", self._evaluate_ocr_result)
@@ -197,7 +198,7 @@ class OCRService:
         self.semaphore = asyncio.Semaphore(10)
 
     @staticmethod
-    def _save_text(filename: str, page_number: int, extracted_text: str):
+    def _save_text(filename: str, page_number: int, extracted_text: str) -> None:
         text_dir = build_text_directory(filename)
         text_dir.mkdir(parents=True, exist_ok=True)
 
@@ -206,7 +207,7 @@ class OCRService:
             f.write(extracted_text)
 
     @staticmethod
-    def _save_image(filename: str, page_number: int, image: Image.Image):
+    def _save_image(filename: str, page_number: int, image: Image.Image) -> None:
         image_dir = build_image_directory(filename)
         image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -249,7 +250,7 @@ class OCRService:
         await asyncio.gather(*tasks)
         return len(tasks)
 
-    def process_pdf(self, filename: str):
+    def process_pdf(self, filename: str) -> int:
         logger.info(f"Starting complete PDF processing: {filename}")
         max_page_number = asyncio.run(self._extract_text_from_pdf(filename))
         logger.info(f"Completed complete PDF processing: {filename}")

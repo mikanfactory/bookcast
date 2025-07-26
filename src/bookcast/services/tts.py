@@ -78,7 +78,7 @@ class TextToSpeechService:
         save_wave_file(str(filename), data)
         return filename
 
-    async def _generate_audio(self, source_script: str, chapter: Chapter):
+    async def _generate_audio(self, source_script: str, chapter: Chapter) -> list[pathlib.Path]:
         semaphore = asyncio.Semaphore(5)
         chunked_scripts = self.split_script(source_script)
         logger.info(f"Total chunks to process: {len(chunked_scripts)}")

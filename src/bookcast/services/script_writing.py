@@ -3,11 +3,11 @@ import operator
 from logging import getLogger
 from typing import Annotated, List
 
-from google import genai
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
@@ -150,19 +150,19 @@ class PodCastOrchestrator:
         self.script_evaluator = PodCastScriptEvaluator(llm)
         self.graph = self._create_graph()
 
-    async def _search_topics(self, state: State):
+    async def _search_topics(self, state: State) -> dict:
         result = await self.topic_searcher.run(state)
         return {
             "topics": result.topics,
         }
 
-    async def _write_script(self, state: State):
+    async def _write_script(self, state: State) -> dict:
         script = await self.script_writer.run(state)
         return {
             "script": script,
         }
 
-    async def _evaluate_script(self, state: State):
+    async def _evaluate_script(self, state: State) -> dict:
         result = await self.script_evaluator.run(state)
         if result.is_valid:
             return {"is_valid": True}
@@ -173,7 +173,8 @@ class PodCastOrchestrator:
                 "feedback_message": [result.feedback_message],
             }
 
-    def _should_retry_or_continue(self, state: State):
+    @staticmethod
+    def _should_retry_or_continue(state: State) -> bool:
         if state.is_valid:
             return True
         elif state.retry_count < MAX_RETRY_COUNT:
@@ -181,7 +182,7 @@ class PodCastOrchestrator:
         else:
             return True
 
-    def _create_graph(self):
+    def _create_graph(self) -> CompiledStateGraph:
         graph = StateGraph(State)
         graph.add_node("search_topics", self._search_topics)
         graph.add_node("write_script", self._write_script)
@@ -206,9 +207,7 @@ class PodCastOrchestrator:
 
 class ScriptWritingService:
     def __init__(self):
-        self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
         self.semaphore = asyncio.Semaphore(10)
-        self.script_model = "gemini-2.0-flash"
 
     @staticmethod
     async def _generate_script_for_text(chapter: Chapter) -> str:
@@ -230,7 +229,7 @@ class ScriptWritingService:
 
         return script
 
-    def process(self, chapter: Chapter):
+    def process(self, chapter: Chapter) -> None:
         logger.info(f"Generating script for chapter: {str(chapter)}")
         asyncio.run(self._generate_chapter_script(chapter))
         logger.info("Script generated.")
