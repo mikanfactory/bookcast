@@ -69,16 +69,16 @@ class AudioService:
         bgm_quiet = bgm_looped - 13
         return bgm_quiet
 
-    def generate_audio(self, chapter: Chapter) -> None:
-        logger.info(f"Generating audio for chapter: {str(chapter)}")
+    def generate_audio(self, chapters: list[Chapter]) -> None:
+        logger.info("Generating audio for chapters")
         jingle_audio = self._coordinate_jingle()
-        script_audio = self._coordinate_script(chapter)
 
-        bgm_audio = self._coordinate_bgm(len(script_audio))
-        script_with_bgm = script_audio.overlay(bgm_audio)
+        for chapter in chapters:
+            script_audio = self._coordinate_script(chapter)
+            bgm_audio = self._coordinate_bgm(len(script_audio))
+            script_with_bgm = script_audio.overlay(bgm_audio)
+            output_audio = jingle_audio + script_with_bgm
 
-        output_audio = jingle_audio + script_with_bgm
-
-        output_path = resolve_audio_output_path(chapter.filename, chapter.chapter_number)
-        output_audio.export(output_path, format="wav", bitrate="192k")
-        logger.info(f"Audio exported to: {output_path}")
+            output_path = resolve_audio_output_path(chapter.filename, chapter.chapter_number)
+            output_audio.export(output_path, format="wav", bitrate="192k")
+            logger.info(f"Audio exported to: {output_path}")
