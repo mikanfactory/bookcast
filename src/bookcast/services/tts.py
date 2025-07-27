@@ -31,7 +31,7 @@ class TextToSpeechService:
     def split_script(source_script: str) -> list[str]:
         text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
             separator="\n",
-            chunk_size=6000,  # 長過ぎると途中で途切れる
+            chunk_size=4000,  # 長過ぎると途中で途切れる
             chunk_overlap=0,
         )
         chunks = text_splitter.split_text(source_script)

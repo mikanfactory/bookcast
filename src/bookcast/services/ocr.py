@@ -198,13 +198,13 @@ class OCRService:
         image.save(image_path, "PNG")
 
     @staticmethod
-    def image_to_base64_png(image: Image.Image) -> str:
+    def _image_to_base64_png(image: Image.Image) -> str:
         with io.BytesIO() as buf:
             image.save(buf, format="PNG")
             return base64.b64encode(buf.getvalue()).decode()
 
-    async def _extract_text_from_image(self, page_number: int, image: Image.Image) -> str:
-        base64_image = self.image_to_base64_png(image)
+    async def _extract(self, page_number: int, image: Image.Image) -> str:
+        base64_image = self._image_to_base64_png(image)
 
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
 
@@ -215,7 +215,7 @@ class OCRService:
 
     async def _extract_text(self, filename: str, page_number: int, image: Image.Image) -> str:
         async with self.semaphore:
-            extracted_text = await self._extract_text_from_image(page_number, image)
+            extracted_text = await self._extract(page_number, image)
 
         self._save_text(filename, page_number, extracted_text)
         self._save_image(filename, page_number, image)
