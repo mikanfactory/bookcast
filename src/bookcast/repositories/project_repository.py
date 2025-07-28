@@ -5,7 +5,7 @@ class ProjectRepository:
     def __init__(self, db):
         self.db = db
 
-    def get_project_by_id(self, project_id: int):
+    def find(self, project_id: int):
         response = self.db.table("project").select("*").eq("id", project_id).execute()
         return response
 

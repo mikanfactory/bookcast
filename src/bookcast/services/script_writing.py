@@ -12,7 +12,7 @@ from langsmith import traceable
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter
+from bookcast.entities.chapter import Chapter
 from bookcast.path_resolver import (
     build_script_directory,
     resolve_script_path,

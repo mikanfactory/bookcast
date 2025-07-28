@@ -4,7 +4,7 @@ import logging
 import click
 from langsmith import tracing_context
 
-from bookcast.entities import build_chapters
+from bookcast.entities.chapter import build_chapters
 from bookcast.services.script_writing import ScriptWritingService
 
 logger = logging.getLogger(__name__)

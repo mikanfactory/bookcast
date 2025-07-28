@@ -3,7 +3,7 @@ from logging import getLogger
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-from bookcast.entities import Chapter
+from bookcast.entities.chapter import Chapter
 from bookcast.path_resolver import resolve_audio_output_path, resolve_audio_path
 
 logger = getLogger(__name__)

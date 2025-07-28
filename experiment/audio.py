@@ -2,7 +2,7 @@ import json
 
 import click
 
-from bookcast.entities import build_chapters
+from bookcast.entities.chapter import build_chapters
 from bookcast.services.audio import AudioService
 
 

@@ -8,7 +8,7 @@ from google.genai import types
 from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter
+from bookcast.entities.chapter import Chapter
 from bookcast.path_resolver import build_audio_directory, resolve_audio_path
 
 logger = getLogger(__name__)
