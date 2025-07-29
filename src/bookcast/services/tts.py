@@ -1,6 +1,5 @@
 import asyncio
 import pathlib
-import wave
 from logging import getLogger
 
 from google import genai
@@ -9,17 +8,10 @@ from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities.chapter import Chapter
-from bookcast.path_resolver import build_audio_directory, resolve_audio_path
+from bookcast.path_resolver import resolve_audio_path
+from bookcast.services.file import TTSFileService
 
 logger = getLogger(__name__)
-
-
-def save_wave_file(filename, pcm, channels=1, rate=24000, sample_width=2) -> None:
-    with wave.open(filename, "wb") as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(sample_width)
-        wf.setframerate(rate)
-        wf.writeframes(pcm)
 
 
 class TextToSpeechService:
@@ -72,13 +64,9 @@ class TextToSpeechService:
 
         data = response.candidates[0].content.parts[0].inline_data.data
 
-        audio_dir = build_audio_directory(chapter.filename)
-        audio_dir.mkdir(parents=True, exist_ok=True)
-
-        filename = resolve_audio_path(chapter.filename, chapter.chapter_number, index)
-        logger.info(f"Saving audio to {filename}.")
-        save_wave_file(str(filename), data)
-        return filename
+        logger.info(f"Saving audio for chapter {chapter.chapter_number}, index {index}.")
+        TTSFileService.write(chapter.filename, chapter.chapter_number, index, data)
+        return resolve_audio_path(chapter.filename, chapter.chapter_number, index)
 
     async def _generate_audio(self, chapters: list[Chapter]) -> list[pathlib.Path]:
         tasks = []

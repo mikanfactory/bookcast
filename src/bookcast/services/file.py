@@ -1,6 +1,13 @@
+import wave
+from typing import List
+
+from pydub import AudioSegment
+
 from bookcast.path_resolver import (
+    build_audio_directory,
     build_script_directory,
     build_text_directory,
+    resolve_audio_path,
     resolve_script_path,
     resolve_text_path,
 )
@@ -41,7 +48,31 @@ class ScriptFileService:
 
 
 class TTSFileService:
-    pass
+    @staticmethod
+    def read(filename: str, chapter_number: int) -> List[AudioSegment]:
+        audio_files = []
+        index = 0
+        while True:
+            audio_path = resolve_audio_path(filename, chapter_number, index)
+            try:
+                audio = AudioSegment.from_wav(audio_path)
+                audio_files.append(audio)
+                index += 1
+            except FileNotFoundError:
+                break
+        return audio_files
+
+    @staticmethod
+    def write(filename: str, chapter_number: int, index: int, pcm_data: bytes) -> None:
+        audio_dir = build_audio_directory(filename)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        audio_path = resolve_audio_path(filename, chapter_number, index)
+        with wave.open(str(audio_path), "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(24000)
+            wf.writeframes(pcm_data)
 
 
 class AudioFileService:

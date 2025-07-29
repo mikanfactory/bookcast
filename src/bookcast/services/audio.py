@@ -4,7 +4,8 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 from bookcast.entities.chapter import Chapter
-from bookcast.path_resolver import resolve_audio_output_path, resolve_audio_path
+from bookcast.path_resolver import resolve_audio_output_path
+from bookcast.services.file import TTSFileService
 
 logger = getLogger(__name__)
 
@@ -21,19 +22,6 @@ def trim_silence(audio: AudioSegment, silence_thresh=-40, min_silence_len=500):
     start_trim = nonsilent_ranges[0][0]
     end_trim = nonsilent_ranges[-1][1]
     return audio[start_trim:end_trim]
-
-
-def read_script_audio_files(filename: str, chapter_number: int):
-    acc = []
-    for i in range(10):
-        path = resolve_audio_path(filename, chapter_number, i)
-        try:
-            audio = AudioSegment.from_wav(path)
-            acc.append(audio)
-        except FileNotFoundError:
-            pass
-
-    return acc
 
 
 class AudioService:
@@ -53,7 +41,7 @@ class AudioService:
 
     @staticmethod
     def _coordinate_script(chapter: Chapter) -> AudioSegment:
-        script_audios = read_script_audio_files(chapter.filename, chapter.chapter_number)
+        script_audios = TTSFileService.read(chapter.filename, chapter.chapter_number)
         acc = AudioSegment.empty()
         for script_audio in script_audios:
             script_audio = normalize(script_audio)
