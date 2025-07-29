@@ -15,18 +15,6 @@ class Chapter(BaseModel):
     extracted_text: Optional[str] = Field(default=None, description="The extracted text from the chapter")
     created_at: Optional[dt.datetime] = Field(default=None, description="The timestamp when the project was created")
 
-    @property
-    def source_text(self) -> str:
-        acc = ""
-        for t in self.extracted_texts:
-            acc += t
-            acc += "\n\n"
-
-        return acc
-
-    def __str__(self):
-        return f"<Chapter {self.filename} - {self.chapter_number}章>"
-
 
 def read_text_from_file(filename: str, page_number: int):
     file_path = resolve_text_path(filename, page_number + 1)
@@ -34,28 +22,3 @@ def read_text_from_file(filename: str, page_number: int):
         text = f.read()
 
     return text
-
-
-def build_chapters(chapter_config: list[dict]) -> list[Chapter]:
-    chapters = []
-    for config in chapter_config:
-        filename = config["filename"]
-        start_page = config["start_page"]
-        end_page = config["end_page"]
-        chapter_number = config["chapter_number"]
-
-        texts = []
-        for i in range(start_page, end_page + 1):
-            text = read_text_from_file(filename, i)
-            texts.append(text)
-
-        chapter = Chapter(
-            filename=filename,
-            chapter_number=chapter_number,
-            start_page=start_page,
-            end_page=end_page,
-            extracted_texts=texts,
-        )
-        chapters.append(chapter)
-
-    return chapters
