@@ -7,6 +7,7 @@ from bookcast.path_resolver import (
     build_audio_directory,
     build_script_directory,
     build_text_directory,
+    resolve_audio_output_path,
     resolve_audio_path,
     resolve_script_path,
     resolve_text_path,
@@ -76,4 +77,15 @@ class TTSFileService:
 
 
 class AudioFileService:
-    pass
+    @staticmethod
+    def read(filename: str, chapter_number: int) -> AudioSegment:
+        output_path = resolve_audio_output_path(filename, chapter_number)
+        return AudioSegment.from_wav(output_path)
+
+    @staticmethod
+    def write(filename: str, chapter_number: int, audio: AudioSegment) -> None:
+        audio_dir = build_audio_directory(filename)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = resolve_audio_output_path(filename, chapter_number)
+        audio.export(output_path, format="wav", bitrate="192k")

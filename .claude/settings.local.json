@@ -4,14 +4,15 @@
       "Bash(python:*)",
       "Bash(uv run ruff:*)",
       "Bash(uv run:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(make:*)"
     ],
     "deny": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "context7",
     "jetbrains",
     "brave-search"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
