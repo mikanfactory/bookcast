@@ -3,7 +3,7 @@ import json
 import click
 
 from bookcast.entities.chapter import build_chapters
-from bookcast.path_resolver import resolve_script_path
+from bookcast.services.file import ScriptFileService
 from bookcast.services.tts import TextToSpeechService
 
 
@@ -15,10 +15,7 @@ def main(config: str):
 
     chapters = build_chapters(config)
     for chapter in chapters:
-        script_path = resolve_script_path(chapter.filename, chapter.chapter_number)
-        with open(script_path, "r") as f:
-            script_text = f.read()
-
+        script_text = ScriptFileService.read(chapter.filename, chapter.chapter_number)
         chapter.script = script_text
 
     service = TextToSpeechService()

@@ -1,4 +1,9 @@
-from bookcast.path_resolver import build_text_directory, resolve_text_path
+from bookcast.path_resolver import (
+    build_script_directory,
+    build_text_directory,
+    resolve_script_path,
+    resolve_text_path,
+)
 
 
 class OCRTextFileService:
@@ -19,7 +24,20 @@ class OCRTextFileService:
 
 
 class ScriptFileService:
-    pass
+    @staticmethod
+    def read(filename: str, chapter_number: int) -> str:
+        script_path = resolve_script_path(filename, chapter_number)
+        with open(script_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    @staticmethod
+    def write(filename: str, chapter_number: int, content: str) -> None:
+        script_dir = build_script_directory(filename)
+        script_dir.mkdir(parents=True, exist_ok=True)
+
+        script_path = resolve_script_path(filename, chapter_number)
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(content)
 
 
 class TTSFileService:

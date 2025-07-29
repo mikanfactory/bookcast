@@ -13,10 +13,7 @@ from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities.chapter import Chapter
-from bookcast.path_resolver import (
-    build_script_directory,
-    resolve_script_path,
-)
+from bookcast.services.file import ScriptFileService
 
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
@@ -228,12 +225,7 @@ class ScriptWritingService:
             logger.info(f"Generating script for chapter: {str(chapter)}")
             script = await self._generate(chapter)
 
-        script_dir = build_script_directory(chapter.filename)
-        script_dir.mkdir(parents=True, exist_ok=True)
-
-        script_path = resolve_script_path(chapter.filename, chapter.chapter_number)
-        with open(script_path, "w", encoding="utf-8") as f:
-            f.write(script)
+        ScriptFileService.write(chapter.filename, chapter.chapter_number, script)
 
         return script
 
