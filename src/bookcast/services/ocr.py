@@ -16,10 +16,9 @@ from bookcast.config import GEMINI_API_KEY
 from bookcast.path_resolver import (
     build_downloads_path,
     build_image_directory,
-    build_text_directory,
     resolve_image_path,
-    resolve_text_path,
 )
+from bookcast.services.file import OCRTextFileService
 
 logger = getLogger(__name__)
 
@@ -182,12 +181,7 @@ class OCRService:
 
     @staticmethod
     def _save_text(filename: str, page_number: int, extracted_text: str) -> None:
-        text_dir = build_text_directory(filename)
-        text_dir.mkdir(parents=True, exist_ok=True)
-
-        text_path = resolve_text_path(filename, page_number)
-        with open(text_path, "w", encoding="utf-8") as f:
-            f.write(extracted_text)
+        OCRTextFileService.write(filename, page_number, extracted_text)
 
     @staticmethod
     def _save_image(filename: str, page_number: int, image: Image.Image) -> None:

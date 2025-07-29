@@ -2,7 +2,8 @@ import streamlit as st
 from streamlit.logger import get_logger
 
 from bookcast.page import Rooter
-from bookcast.path_resolver import resolve_image_path, resolve_text_path
+from bookcast.path_resolver import resolve_image_path
+from bookcast.services.file import OCRTextFileService
 from bookcast.session_state import SessionState as ss
 from bookcast.view_models import ChaptersViewModel
 
@@ -59,9 +60,7 @@ def display_page_content(filename: str, current_page: int):
     with col2:
         with st.container(height=650):
             # Get text content using service
-            text_path = resolve_text_path(filename, current_page)
-            with open(text_path, "r", encoding="utf-8") as f:
-                text_content = f.read()
+            text_content = OCRTextFileService.read(filename, current_page)
             st.write(text_content)
 
 

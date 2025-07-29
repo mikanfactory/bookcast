@@ -3,8 +3,6 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from bookcast.path_resolver import resolve_text_path
-
 
 class ChapterStatus(StrEnum):
     not_started = "not_started"
@@ -27,11 +25,3 @@ class Chapter(BaseModel):
     extracted_text: str | None = Field(default=None, description="The extracted text from the chapter")
     status: ChapterStatus = Field(default=ChapterStatus.not_started, description="The current status of the chapter")
     created_at: dt.datetime | None = Field(default=None, description="The timestamp when the project was created")
-
-
-def read_text_from_file(filename: str, page_number: int):
-    file_path = resolve_text_path(filename, page_number + 1)
-    with open(file_path, "r") as f:
-        text = f.read()
-
-    return text
