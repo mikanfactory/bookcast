@@ -2,7 +2,6 @@ import asyncio
 import base64
 import io
 from logging import getLogger
-from typing import Optional
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -13,6 +12,7 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
+from bookcast.entities import Chapter, Project
 from bookcast.path_resolver import (
     build_downloads_path,
     build_image_directory,
@@ -180,10 +180,6 @@ class OCRService:
         self.semaphore = asyncio.Semaphore(10)
 
     @staticmethod
-    def _save_text(filename: str, page_number: int, extracted_text: str) -> None:
-        OCRTextFileService.write(filename, page_number, extracted_text)
-
-    @staticmethod
     def _save_image(filename: str, page_number: int, image: Image.Image) -> None:
         image_dir = build_image_directory(filename)
         image_dir.mkdir(parents=True, exist_ok=True)
@@ -211,29 +207,31 @@ class OCRService:
         async with self.semaphore:
             extracted_text = await self._extract(page_number, image)
 
-        self._save_text(filename, page_number, extracted_text)
+        OCRTextFileService.write(filename, page_number, extracted_text)
         self._save_image(filename, page_number, image)
 
         return extracted_text
 
-    async def _extract_text_from_pdf(self, filename: str, page_number: Optional[int] = None) -> int:
-        pdf_path = build_downloads_path(filename)
+    async def _extract_text_from_pdf(self, project: Project, chapters: list[Chapter]) -> int:
+        pdf_path = build_downloads_path(project.filename)
         images = convert_from_path(pdf_path)
+        tasks = []
+        for chapter in chapters:
+            ts = [
+                self._extract_text(project.filename, i, images[i - 1])
+                for i in range(chapter.start_page, chapter.end_page)
+            ]
+            tasks.extend(ts)
 
-        if page_number is not None:
-            tasks = [self._extract_text(filename, page_number, images[page_number - 1])]
-        else:
-            tasks = [self._extract_text(filename, i + 1, image) for i, image in enumerate(images)]
-
-        logger.info(f"Extracting text from PDF: {filename}, total pages: {len(tasks)}")
+        logger.info(f"Extracting text from PDF: {project.filename}, total pages: {len(tasks)}")
         await asyncio.gather(*tasks)
         return len(tasks)
 
-    def process_pdf(self, filename: str, page_number: Optional[int] = None) -> int:
-        logger.info(f"Starting complete PDF processing: {filename}")
+    def process(self, project: Project, chapters: list[Chapter]) -> int:
+        logger.info(f"Starting complete PDF processing: {project.filename}")
 
-        max_page_number = asyncio.run(self._extract_text_from_pdf(filename, page_number))
+        max_page_number = asyncio.run(self._extract_text_from_pdf(project, chapters))
 
-        logger.info(f"Completed complete PDF processing: {filename}")
+        logger.info(f"Completed complete PDF processing: {project.filename}")
 
         return max_page_number
