@@ -1,4 +1,4 @@
 from .chapter import Chapter, ChapterStatus
-from .project import Project
+from .project import Project, ProjectStatus
 
-__all__ = ["Chapter", "ChapterStatus", "Project"]
+__all__ = ["Chapter", "ChapterStatus", "Project", "ProjectStatus"]

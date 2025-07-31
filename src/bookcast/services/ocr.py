@@ -12,15 +12,20 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, Project
+from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
 from bookcast.path_resolver import (
     build_downloads_path,
     build_image_directory,
     resolve_image_path,
 )
+from bookcast.repositories import ChapterRepository, ProjectRepository
+from bookcast.services.db import supabase_client
 from bookcast.services.file import OCRTextFileService
 
 logger = getLogger(__name__)
+
+chapter_repository = ChapterRepository(supabase_client)
+project_repository = ProjectRepository(supabase_client)
 
 
 class State(BaseModel):
@@ -203,35 +208,61 @@ class OCRService:
         response = await ocr_agent.run(page_number, base64_image)
         return response
 
-    async def _extract_text(self, filename: str, page_number: int, image: Image.Image) -> str:
+    async def _extract_text(self, project: Project, chapter: Chapter, page_number: int, image: Image.Image) -> dict:
         async with self.semaphore:
             extracted_text = await self._extract(page_number, image)
 
-        OCRTextFileService.write(filename, page_number, extracted_text)
-        self._save_image(filename, page_number, image)
+        OCRTextFileService.write(project.filename, page_number, extracted_text)
+        self._save_image(project.filename, page_number, image)
 
-        return extracted_text
+        return {"chapter_id": chapter.id, "page_number": page_number, "extracted_text": extracted_text}
 
-    async def _extract_text_from_pdf(self, project: Project, chapters: list[Chapter]) -> int:
+    async def _extract_text_from_pdf(self, project: Project, chapters: list[Chapter]) -> list[dict]:
         pdf_path = build_downloads_path(project.filename)
         images = convert_from_path(pdf_path)
         tasks = []
         for chapter in chapters:
             ts = [
-                self._extract_text(project.filename, i, images[i - 1])
+                self._extract_text(project, chapter, i, images[i - 1])
                 for i in range(chapter.start_page, chapter.end_page)
             ]
             tasks.extend(ts)
 
         logger.info(f"Extracting text from PDF: {project.filename}, total pages: {len(tasks)}")
-        await asyncio.gather(*tasks)
-        return len(tasks)
+        results = await asyncio.gather(*tasks)
+        return results
 
-    def process(self, project: Project, chapters: list[Chapter]) -> int:
-        logger.info(f"Starting complete PDF processing: {project.filename}")
+    @staticmethod
+    def _update_status(project: Project, chapters: list[Chapter]) -> None:
+        project.status = ProjectStatus.start_ocr
+        project_repository.update(project)
 
-        max_page_number = asyncio.run(self._extract_text_from_pdf(project, chapters))
+        for chapter in chapters:
+            chapter.status = ChapterStatus.start_ocr
+            chapter_repository.update(chapter)
 
-        logger.info(f"Completed complete PDF processing: {project.filename}")
+    @staticmethod
+    def _update_chapter_texts(project: Project, chapters: list[Chapter], results: list[dict]) -> None:
+        results.sort(key=lambda x: x["page_number"])
 
-        return max_page_number
+        for chapter in chapters:
+            acc = []
+            for result in results:
+                if result["chapter_id"] == chapter.id:
+                    acc.append(result["extracted_text"])
+
+            chapter.extracted_text = "\n\n".join(acc)
+            chapter.status = ChapterStatus.ocr_completed
+            chapter_repository.update(chapter)
+
+        project.status = ProjectStatus.ocr_completed
+        project_repository.update(project)
+
+    def process(self, project: Project, chapters: list[Chapter]) -> None:
+        logger.info(f"Starting OCR: {project.filename}")
+        self._update_status(project, chapters)
+
+        results = asyncio.run(self._extract_text_from_pdf(project, chapters))
+
+        self._update_chapter_texts(project, chapters, results)
+        logger.info(f"Completed OCR: {project.filename}")
