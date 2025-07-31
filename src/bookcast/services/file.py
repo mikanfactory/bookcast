@@ -1,8 +1,10 @@
+import pathlib
 import wave
 from typing import List
 
 from pydub import AudioSegment
 
+from bookcast.infrastructure.gcs import GCSFileUploadable
 from bookcast.path_resolver import (
     build_audio_directory,
     build_script_directory,
@@ -14,15 +16,15 @@ from bookcast.path_resolver import (
 )
 
 
-class OCRTextFileService:
-    @staticmethod
-    def read(filename: str, page_number: int) -> str:
+class OCRTextFileService(GCSFileUploadable):
+    @classmethod
+    def read(cls, filename: str, page_number: int) -> str:
         text_path = resolve_text_path(filename, page_number)
         with open(text_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    @staticmethod
-    def write(filename: str, page_number: int, content: str) -> None:
+    @classmethod
+    def write(cls, filename: str, page_number: int, content: str) -> pathlib.Path:
         text_dir = build_text_directory(filename)
         text_dir.mkdir(parents=True, exist_ok=True)
 
@@ -30,16 +32,18 @@ class OCRTextFileService:
         with open(text_path, "w", encoding="utf-8") as f:
             f.write(content)
 
+        return text_path
 
-class ScriptFileService:
-    @staticmethod
-    def read(filename: str, chapter_number: int) -> str:
+
+class ScriptFileService(GCSFileUploadable):
+    @classmethod
+    def read(cls, filename: str, chapter_number: int) -> str:
         script_path = resolve_script_path(filename, chapter_number)
         with open(script_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    @staticmethod
-    def write(filename: str, chapter_number: int, content: str) -> None:
+    @classmethod
+    def write(cls, filename: str, chapter_number: int, content: str) -> pathlib.Path:
         script_dir = build_script_directory(filename)
         script_dir.mkdir(parents=True, exist_ok=True)
 
@@ -47,10 +51,12 @@ class ScriptFileService:
         with open(script_path, "w", encoding="utf-8") as f:
             f.write(content)
 
+        return script_path
 
-class TTSFileService:
-    @staticmethod
-    def read(filename: str, chapter_number: int) -> List[AudioSegment]:
+
+class TTSFileService(GCSFileUploadable):
+    @classmethod
+    def read(cls, filename: str, chapter_number: int) -> List[AudioSegment]:
         audio_files = []
         index = 0
         while True:
@@ -63,8 +69,8 @@ class TTSFileService:
                 break
         return audio_files
 
-    @staticmethod
-    def write(filename: str, chapter_number: int, index: int, pcm_data: bytes) -> None:
+    @classmethod
+    def write(cls, filename: str, chapter_number: int, index: int, pcm_data: bytes) -> pathlib.Path:
         audio_dir = build_audio_directory(filename)
         audio_dir.mkdir(parents=True, exist_ok=True)
 
@@ -75,17 +81,20 @@ class TTSFileService:
             wf.setframerate(24000)
             wf.writeframes(pcm_data)
 
+        return audio_path
 
-class AudioFileService:
-    @staticmethod
-    def read(filename: str, chapter_number: int) -> AudioSegment:
+
+class AudioFileService(GCSFileUploadable):
+    @classmethod
+    def read(cls, filename: str, chapter_number: int) -> AudioSegment:
         output_path = resolve_audio_output_path(filename, chapter_number)
         return AudioSegment.from_wav(output_path)
 
-    @staticmethod
-    def write(filename: str, chapter_number: int, audio: AudioSegment) -> None:
+    @classmethod
+    def write(cls, filename: str, chapter_number: int, audio: AudioSegment) -> pathlib.Path:
         audio_dir = build_audio_directory(filename)
         audio_dir.mkdir(parents=True, exist_ok=True)
 
         output_path = resolve_audio_output_path(filename, chapter_number)
         audio.export(output_path, format="wav", bitrate="192k")
+        return output_path

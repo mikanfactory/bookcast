@@ -230,7 +230,8 @@ class ScriptWritingService:
             logger.info(f"Generating script for chapter: {str(chapter)}")
             script = await self._generate(chapter)
 
-        ScriptFileService.write(chapter.filename, chapter.chapter_number, script)
+        source_file_path = ScriptFileService.write(chapter.filename, chapter.chapter_number, script)
+        ScriptFileService.upload_from_file(source_file_path)
 
         return {"chapter_id": chapter.id, "script": script}
 

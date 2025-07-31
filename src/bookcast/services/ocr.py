@@ -212,7 +212,8 @@ class OCRService:
         async with self.semaphore:
             extracted_text = await self._extract(page_number, image)
 
-        OCRTextFileService.write(project.filename, page_number, extracted_text)
+        source_file_path = OCRTextFileService.write(project.filename, page_number, extracted_text)
+        OCRTextFileService.upload_from_file(source_file_path)
         self._save_image(project.filename, page_number, image)
 
         return {"chapter_id": chapter.id, "page_number": page_number, "extracted_text": extracted_text}

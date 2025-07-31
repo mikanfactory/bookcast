@@ -11,6 +11,7 @@ if ENV == "production":
 else:
     GOOGLE_CLOUD_STORAGE_BUCKET = os.getenv("GOOGLE_CLOUD_DEVELOPMENT_STORAGE_BUCKET")
 
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if ENV == "production":

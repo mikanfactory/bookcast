@@ -8,7 +8,6 @@ from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
-from bookcast.path_resolver import resolve_audio_path
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.db import supabase_client
 from bookcast.services.file import TTSFileService
@@ -70,8 +69,9 @@ class TextToSpeechService:
         data = response.candidates[0].content.parts[0].inline_data.data
 
         logger.info(f"Saving audio for chapter {chapter.chapter_number}, index {index}.")
-        TTSFileService.write(chapter.filename, chapter.chapter_number, index, data)
-        return resolve_audio_path(chapter.filename, chapter.chapter_number, index)
+        source_file_path = TTSFileService.write(chapter.filename, chapter.chapter_number, index, data)
+        TTSFileService.upload_from_file(source_file_path)
+        return source_file_path
 
     async def _generate_audio(self, chapters: list[Chapter]) -> list[pathlib.Path]:
         tasks = []

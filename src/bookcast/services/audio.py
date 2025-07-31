@@ -91,7 +91,8 @@ class AudioService:
             script_with_bgm = script_audio.overlay(bgm_audio)
             output_audio = jingle_audio + script_with_bgm
 
-            AudioFileService.write(chapter.filename, chapter.chapter_number, output_audio)
+            source_file_path = AudioFileService.write(chapter.filename, chapter.chapter_number, output_audio)
+            AudioFileService.upload_from_file(source_file_path)
 
         self._update_to_completed(project, chapters)
         logger.info("Audio generation completed successfully.")
