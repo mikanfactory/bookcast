@@ -20,7 +20,6 @@ from bookcast.services.file import ScriptFileService
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
 
-
 chapter_repository = ChapterRepository(supabase_client)
 project_repository = ProjectRepository(supabase_client)
 
