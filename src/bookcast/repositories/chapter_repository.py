@@ -13,14 +13,18 @@ class ChapterRepository:
         response = self.db.table("chapter").select("*").eq("project_id", project_id).execute()
         return response
 
-    def insert_chapter(self, chapter: Chapter):
-        response = self.db.table("chapter").insert(chapter.model_dump(exclude=["id", "created_at"])).execute()
+    def create(self, chapter: Chapter):
+        exclude_fields = {"id", "extracted_text", "script", "created_at", "updated_at"}
+        response = self.db.table("chapter").insert(chapter.model_dump(exclude=exclude_fields)).execute()
         return response
 
     def update(self, chapter: Chapter):
-        response = self.db.table("chapter").update(chapter.model_dump()).eq("id", chapter.id).execute()
+        exclude_fields = {"script", "updated_at"}
+        response = (
+            self.db.table("chapter").update(chapter.model_dump(exclude=exclude_fields)).eq("id", chapter.id).execute()
+        )
         return response
 
-    def delete_chapter(self, chapter_id: int):
+    def delete(self, chapter_id: int):
         response = self.db.table("chapter").delete().eq("id", chapter_id).execute()
         return response
