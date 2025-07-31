@@ -17,6 +17,10 @@ class ChapterRepository:
         response = self.db.table("chapter").insert(chapter.model_dump(exclude=["id", "created_at"])).execute()
         return response
 
+    def update(self, chapter: Chapter):
+        response = self.db.table("chapter").update(chapter.model_dump()).eq("id", chapter.id).execute()
+        return response
+
     def delete_chapter(self, chapter_id: int):
         response = self.db.table("chapter").delete().eq("id", chapter_id).execute()
         return response

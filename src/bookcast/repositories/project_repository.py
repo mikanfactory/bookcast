@@ -12,3 +12,7 @@ class ProjectRepository:
     def insert_project(self, project: Project):
         response = self.db.table("project").insert(project.model_dump(exclude=["id", "created_at"])).execute()
         return response
+
+    def update(self, project: Project):
+        response = self.db.table("project").update(project.model_dump()).eq("id", project.id).execute()
+        return response

@@ -25,3 +25,4 @@ class Chapter(BaseModel):
     extracted_text: str | None = Field(default=None, description="The extracted text from the chapter")
     status: ChapterStatus = Field(default=ChapterStatus.not_started, description="The current status of the chapter")
     created_at: dt.datetime | None = Field(default=None, description="The timestamp when the project was created")
+    updated_at: dt.datetime | None = Field(default=None, description="The timestamp when the project was last updated")
