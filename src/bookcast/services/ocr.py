@@ -12,7 +12,7 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
+from bookcast.entities import Chapter, Project
 from bookcast.path_resolver import (
     build_downloads_path,
     build_image_directory,
@@ -233,37 +233,7 @@ class OCRService:
         results = await asyncio.gather(*tasks)
         return results
 
-    @staticmethod
-    def _update_status(project: Project, chapters: list[Chapter]) -> None:
-        project.status = ProjectStatus.start_ocr
-        project_repository.update(project)
-
-        for chapter in chapters:
-            chapter.status = ChapterStatus.start_ocr
-            chapter_repository.update(chapter)
-
-    @staticmethod
-    def _update_chapter_texts(project: Project, chapters: list[Chapter], results: list[dict]) -> None:
-        results.sort(key=lambda x: x["page_number"])
-
-        for chapter in chapters:
-            acc = []
-            for result in results:
-                if result["chapter_id"] == chapter.id:
-                    acc.append(result["extracted_text"])
-
-            chapter.extracted_text = "\n\n".join(acc)
-            chapter.status = ChapterStatus.ocr_completed
-            chapter_repository.update(chapter)
-
-        project.status = ProjectStatus.ocr_completed
-        project_repository.update(project)
-
     def process(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info(f"Starting OCR: {project.filename}")
-        self._update_status(project, chapters)
-
-        results = asyncio.run(self._extract_text_from_pdf(project, chapters))
-
-        self._update_chapter_texts(project, chapters, results)
+        asyncio.run(self._extract_text_from_pdf(project, chapters))
         logger.info(f"Completed OCR: {project.filename}")

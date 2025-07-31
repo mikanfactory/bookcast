@@ -7,7 +7,7 @@ from google.genai import types
 from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
+from bookcast.entities import Chapter, Project
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.db import supabase_client
 from bookcast.services.file import TTSFileService
@@ -84,30 +84,7 @@ class TextToSpeechService:
 
         return await asyncio.gather(*tasks)
 
-    @staticmethod
-    def _update_status(project: Project, chapters: list[Chapter]) -> None:
-        project.status = ProjectStatus.start_tts
-        project_repository.update(project)
-
-        for chapter in chapters:
-            chapter.status = ChapterStatus.start_tts
-            chapter_repository.update(chapter)
-
-    # TODO: Cloud Tasks導入時に名前と処理をリファクタリング
-    @staticmethod
-    def _update_to_completed(project: Project, chapters: list[Chapter]) -> None:
-        project.status = ProjectStatus.tts_completed
-        project_repository.update(project)
-
-        for chapter in chapters:
-            chapter.status = ChapterStatus.tts_completed
-            chapter_repository.update(chapter)
-
     def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info("Starting audio generation for chapters.")
-        self._update_status(project, chapters)
-
         asyncio.run(self._generate_audio(chapters))
-
-        self._update_to_completed(project, chapters)
         logger.info("Audio generation completed successfully.")

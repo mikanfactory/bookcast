@@ -12,7 +12,7 @@ from langsmith import traceable
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
+from bookcast.entities import Chapter, Project
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.db import supabase_client
 from bookcast.services.file import ScriptFileService
@@ -239,33 +239,7 @@ class ScriptWritingService:
         tasks = [self._generate_script(chapter) for chapter in chapters]
         return await asyncio.gather(*tasks)
 
-    @staticmethod
-    def _update_status(project: Project, chapters: list[Chapter]) -> None:
-        project.status = ProjectStatus.start_writing_script
-        project_repository.update(project)
-
-        for chapter in chapters:
-            chapter.status = ChapterStatus.start_writing_script
-            chapter_repository.update(chapter)
-
-    @staticmethod
-    def _update_chapter_script(project: Project, chapters: list[Chapter], results: list[dict]) -> None:
-        for chapter in chapters:
-            for result in results:
-                if result["chapter_id"] == chapter.id:
-                    chapter.script = result["script"]
-                    chapter.status = ChapterStatus.writing_script_completed
-
-            chapter_repository.update(chapter)
-
-        project.status = ProjectStatus.writing_script_completed
-        project_repository.update(project)
-
     def process(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info("Start writing script.")
-        self._update_status(project, chapters)
-
-        results = asyncio.run(self._generate_scripts(chapters))
-
-        self._update_chapter_script(project, chapters, results)
+        asyncio.run(self._generate_scripts(chapters))
         logger.info("End writing script.")

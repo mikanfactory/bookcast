@@ -1,6 +1,11 @@
 from typing import BinaryIO
 
-from bookcast.entities import Project
+from bookcast.entities import Project, ProjectStatus
+from bookcast.repositories import ChapterRepository, ProjectRepository
+from bookcast.services.db import supabase_client
+
+chapter_repository = ChapterRepository(supabase_client)
+project_repository = ProjectRepository(supabase_client)
 
 
 class ProjectService:
@@ -15,3 +20,8 @@ class ProjectService:
     @classmethod
     def create_project(cls, filename: str, file: BinaryIO) -> Project:
         pass
+
+    @classmethod
+    def update_project_status(cls, project: Project, status: ProjectStatus):
+        project.status = status
+        project_repository.update(project)

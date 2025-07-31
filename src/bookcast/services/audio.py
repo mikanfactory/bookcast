@@ -3,7 +3,7 @@ from logging import getLogger
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
+from bookcast.entities import Chapter, Project
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.db import supabase_client
 from bookcast.services.file import AudioFileService, TTSFileService
@@ -61,28 +61,8 @@ class AudioService:
         bgm_quiet = bgm_looped - 13
         return bgm_quiet
 
-    @staticmethod
-    def _update_status(project: Project, chapters: list[Chapter]) -> None:
-        project.status = ProjectStatus.start_creating_audio
-        project_repository.update(project)
-
-        for chapter in chapters:
-            chapter.status = ChapterStatus.start_creating_audio
-            chapter_repository.update(chapter)
-
-    @staticmethod
-    def _update_to_completed(project: Project, chapters: list[Chapter]) -> None:
-        project.status = ProjectStatus.creating_audio_completed
-        project_repository.update(project)
-
-        for chapter in chapters:
-            chapter.status = ChapterStatus.creating_audio_completed
-            chapter_repository.update(chapter)
-
     def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info("Generating audio for chapters")
-        self._update_status(project, chapters)
-
         jingle_audio = self._coordinate_jingle()
 
         for chapter in chapters:
@@ -94,5 +74,4 @@ class AudioService:
             source_file_path = AudioFileService.write(chapter.filename, chapter.chapter_number, output_audio)
             AudioFileService.upload_from_file(source_file_path)
 
-        self._update_to_completed(project, chapters)
         logger.info("Audio generation completed successfully.")
