@@ -1,4 +1,4 @@
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, ScriptWritingWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, ScriptWritingWorkerResult, TTSWorkerResult
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.db import supabase_client
 
@@ -44,4 +44,16 @@ class ChapterService:
                     chapter.script = result.script
 
             chapter.status = ChapterStatus.writing_script_completed
+            chapter_repository.update(chapter)
+
+    @classmethod
+    def update_chapter_script_file_count(cls, chapters: list[Chapter], results: list[TTSWorkerResult]) -> None:
+        results.sort(key=lambda x: x.index)
+
+        for chapter in chapters:
+            for result in results:
+                if result.chapter_id == chapter.id:
+                    chapter.script_file_count = result.index
+
+            chapter.status = ChapterStatus.tts_completed
             chapter_repository.update(chapter)

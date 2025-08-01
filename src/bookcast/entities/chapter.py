@@ -24,6 +24,7 @@ class Chapter(BaseModel):
     end_page: int = Field(..., description="The ending page number of the chapter")
     extracted_text: str = Field(default="", description="The extracted text from the chapter")
     script: str = Field(default="", description="The script generated from extracted_text")
+    script_file_count: int = Field(default=0, description="The file count of the split script.")
     status: ChapterStatus = Field(default=ChapterStatus.not_started, description="The current status of the chapter")
     created_at: dt.datetime | None = Field(default=None, description="The timestamp when the project was created")
     updated_at: dt.datetime | None = Field(default=None, description="The timestamp when the project was last updated")

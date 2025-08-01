@@ -65,10 +65,10 @@ async def start_tts(project_id: int):
     ProjectService.update_project_status(project, ProjectStatus.start_tts)
     ChapterService.update_chapters_status(chapters, ChapterStatus.start_tts)
 
-    tts_service.generate_audio(project, chapters)
+    results = tts_service.generate_audio(project, chapters)
 
     ProjectService.update_project_status(project, ProjectStatus.tts_completed)
-    ChapterService.update_chapters_status(chapters, ChapterStatus.tts_completed)
+    ChapterService.update_chapter_script_file_count(chapters, results)
     return {"status": 200}
 
 

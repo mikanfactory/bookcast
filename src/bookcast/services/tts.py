@@ -1,5 +1,4 @@
 import asyncio
-import pathlib
 from logging import getLogger
 
 from google import genai
@@ -7,7 +6,7 @@ from google.genai import types
 from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, Project
+from bookcast.entities import Chapter, Project, TTSWorkerResult
 from bookcast.services.file import TTSFileService
 
 logger = getLogger(__name__)
@@ -28,7 +27,7 @@ class TextToSpeechService:
         chunks = text_splitter.split_text(source_script)
         return chunks
 
-    async def _generate(self, script: str, chapter: Chapter, index: int) -> pathlib.Path:
+    async def _generate(self, script: str, chapter: Chapter, index: int) -> TTSWorkerResult:
         async with self.semaphore:
             logger.info(f"Generating audio for chapter: {str(chapter)}, index: {index}")
             response = await self.client.aio.models.generate_content(
@@ -66,9 +65,9 @@ class TextToSpeechService:
         logger.info(f"Saving audio for chapter {chapter.chapter_number}, index {index}.")
         source_file_path = TTSFileService.write(chapter.filename, chapter.chapter_number, index, data)
         TTSFileService.upload_gcs_from_file(source_file_path)
-        return source_file_path
+        return TTSWorkerResult(chapter_id=chapter.id, index=index)
 
-    async def _generate_audio(self, chapters: list[Chapter]) -> list[pathlib.Path]:
+    async def _generate_audio(self, chapters: list[Chapter]) -> list[TTSWorkerResult]:
         tasks = []
         for chapter in chapters:
             chunked_scripts = self.split_script(chapter.script)
@@ -79,7 +78,9 @@ class TextToSpeechService:
 
         return await asyncio.gather(*tasks)
 
-    def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
+    def generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
         logger.info("Starting audio generation for chapters.")
-        asyncio.run(self._generate_audio(chapters))
+        results = asyncio.run(self._generate_audio(chapters))
         logger.info("Audio generation completed successfully.")
+
+        return results

@@ -10,3 +10,8 @@ class OCRWorkerResult(BaseModel):
 class ScriptWritingWorkerResult(BaseModel):
     chapter_id: int
     script: str
+
+
+class TTSWorkerResult(BaseModel):
+    chapter_id: int
+    index: int
