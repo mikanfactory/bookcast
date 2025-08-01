@@ -11,12 +11,30 @@ def _remove_prefix(filename: pathlib.Path) -> pathlib.Path:
 
 class GCSFileUploadable:
     @classmethod
-    def upload_from_file(cls, source_file_name: pathlib.Path):
+    def _fetch_text_from_gcs(cls, source_file_name: pathlib.Path) -> str:
         destination_key = _remove_prefix(source_file_name)
-        cls._upload_from_file(source_file_name, destination_key)
+
+        storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
+        bucket = storage_client.bucket(GOOGLE_CLOUD_STORAGE_BUCKET)
+        blob = bucket.blob(str(destination_key))
+        return blob.download_as_text(encoding="utf-8")
 
     @classmethod
-    def _upload_from_file(cls, source_file_name: pathlib.Path, destination_key: pathlib.Path):
+    def _download_from_gcs(cls, source_file_name: pathlib.Path) -> None:
+        destination_key = _remove_prefix(source_file_name)
+
+        storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
+        bucket = storage_client.bucket(GOOGLE_CLOUD_STORAGE_BUCKET)
+        blob = bucket.blob(str(destination_key))
+        blob.download_to_filename(str(source_file_name))
+
+    @classmethod
+    def upload_gcs_from_file(cls, source_file_name: pathlib.Path) -> None:
+        destination_key = _remove_prefix(source_file_name)
+        cls._upload_gcs_from_file(source_file_name, destination_key)
+
+    @classmethod
+    def _upload_gcs_from_file(cls, source_file_name: pathlib.Path, destination_key: pathlib.Path) -> None:
         storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
         bucket = storage_client.bucket(GOOGLE_CLOUD_STORAGE_BUCKET)
         blob = bucket.blob(str(destination_key))

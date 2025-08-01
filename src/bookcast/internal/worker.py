@@ -30,10 +30,10 @@ async def start_ocr(project_id: int):
     ProjectService.update_project_status(project, ProjectStatus.start_ocr)
     ChapterService.update_chapters_status(chapters, ChapterStatus.start_ocr)
 
-    ocr_service.process(project, chapters)
+    results = ocr_service.process(project, chapters)
 
     ProjectService.update_project_status(project, ProjectStatus.ocr_completed)
-    ChapterService.update_chapters_status(chapters, ChapterStatus.ocr_completed)
+    ChapterService.update_chapter_extracted_text(chapters, results)
     return {"status": 200}
 
 
@@ -47,10 +47,10 @@ async def start_script_writing(project_id: int):
     ProjectService.update_project_status(project, ProjectStatus.start_writing_script)
     ChapterService.update_chapters_status(chapters, ChapterStatus.start_writing_script)
 
-    script_writing_service.process(project, chapters)
+    results = script_writing_service.process(project, chapters)
 
     ProjectService.update_project_status(project, ProjectStatus.writing_script_completed)
-    ChapterService.update_chapters_status(chapters, ChapterStatus.writing_script_completed)
+    ChapterService.update_chapter_script(chapters, results)
     return {"status": 200}
 
 

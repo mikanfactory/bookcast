@@ -4,14 +4,9 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 from bookcast.entities import Chapter, Project
-from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.db import supabase_client
 from bookcast.services.file import AudioFileService, TTSFileService
 
 logger = getLogger(__name__)
-
-chapter_repository = ChapterRepository(supabase_client)
-project_repository = ProjectRepository(supabase_client)
 
 
 def normalize(audio: AudioSegment, target_dBFS=-16.0):
@@ -72,6 +67,6 @@ class AudioService:
             output_audio = jingle_audio + script_with_bgm
 
             source_file_path = AudioFileService.write(chapter.filename, chapter.chapter_number, output_audio)
-            AudioFileService.upload_from_file(source_file_path)
+            AudioFileService.upload_gcs_from_file(source_file_path)
 
         logger.info("Audio generation completed successfully.")

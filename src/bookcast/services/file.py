@@ -34,6 +34,14 @@ class OCRTextFileService(GCSFileUploadable):
 
         return text_path
 
+    @classmethod
+    def fetch_text_from_gcs(cls, filename: str, page_number: int) -> str:
+        text_dir = build_text_directory(filename)
+        text_dir.mkdir(parents=True, exist_ok=True)
+
+        text_path = resolve_text_path(filename, page_number)
+        return cls._fetch_text_from_gcs(text_path)
+
 
 class ScriptFileService(GCSFileUploadable):
     @classmethod

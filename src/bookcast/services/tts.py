@@ -8,14 +8,9 @@ from langchain.text_splitter import CharacterTextSplitter
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, Project
-from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.db import supabase_client
 from bookcast.services.file import TTSFileService
 
 logger = getLogger(__name__)
-
-chapter_repository = ChapterRepository(supabase_client)
-project_repository = ProjectRepository(supabase_client)
 
 
 class TextToSpeechService:
@@ -70,7 +65,7 @@ class TextToSpeechService:
 
         logger.info(f"Saving audio for chapter {chapter.chapter_number}, index {index}.")
         source_file_path = TTSFileService.write(chapter.filename, chapter.chapter_number, index, data)
-        TTSFileService.upload_from_file(source_file_path)
+        TTSFileService.upload_gcs_from_file(source_file_path)
         return source_file_path
 
     async def _generate_audio(self, chapters: list[Chapter]) -> list[pathlib.Path]:

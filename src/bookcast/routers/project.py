@@ -22,5 +22,4 @@ async def show(project_id: int) -> Project:
 
 @router.post("/upload_file")
 async def upload_file(file: UploadFile):
-    result = ProjectService.create_project(file.filename, file.file)
-    return result
+    return ProjectService.create_project(file.filename, file.file)
