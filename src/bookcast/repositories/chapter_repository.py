@@ -14,12 +14,12 @@ class ChapterRepository:
         return response
 
     def create(self, chapter: Chapter):
-        exclude_fields = {"id", "extracted_text", "script", "created_at", "updated_at"}
+        exclude_fields = {"id", "extracted_text", "created_at", "updated_at"}
         response = self.db.table("chapter").insert(chapter.model_dump(exclude=exclude_fields)).execute()
         return response
 
     def update(self, chapter: Chapter):
-        exclude_fields = {"script", "updated_at"}
+        exclude_fields = {"updated_at"}
         response = (
             self.db.table("chapter").update(chapter.model_dump(exclude=exclude_fields)).eq("id", chapter.id).execute()
         )

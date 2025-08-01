@@ -15,7 +15,6 @@ from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, OCRWorkerResult, Project
 from bookcast.path_resolver import build_downloads_path
 from bookcast.services.chapter import ChapterService
-from bookcast.services.file import OCRTextFileService
 
 logger = getLogger(__name__)
 
@@ -184,11 +183,8 @@ class OCRService:
 
     async def _extract(self, page_number: int, image: Image.Image) -> str:
         base64_image = self._image_to_base64_png(image)
-
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
-
         ocr_agent = OCROrchestrator(llm)
-
         response = await ocr_agent.run(page_number, base64_image)
         return response
 
@@ -197,9 +193,6 @@ class OCRService:
     ) -> OCRWorkerResult:
         async with self.semaphore:
             extracted_text = await self._extract(page_number, image)
-
-        source_file_path = OCRTextFileService.write(project.filename, page_number, extracted_text)
-        OCRTextFileService.upload_gcs_from_file(source_file_path)
 
         return OCRWorkerResult(chapter_id=chapter.id, page_number=page_number, extracted_text=extracted_text)
 
