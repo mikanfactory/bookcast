@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from bookcast.entities import ChapterStatus, ProjectStatus
 from bookcast.services.audio import AudioService
 from bookcast.services.chapter import ChapterService
+from bookcast.services.file import TTSFileService
 from bookcast.services.ocr import OCRService
 from bookcast.services.project import ProjectService
 from bookcast.services.script_writing import ScriptWritingService
@@ -81,6 +82,8 @@ async def start_creating_audio(project_id: int):
     ProjectService.update_project_status(project, ProjectStatus.start_creating_audio)
     ChapterService.update_chapters_status(chapters, ChapterStatus.start_creating_audio)
 
+    # TODO
+    TTSFileService.download_from_gcs(project.filename, 1, 1)
     audio_service.generate_audio(project, chapters)
 
     ProjectService.update_project_status(project, ProjectStatus.creating_audio_completed)

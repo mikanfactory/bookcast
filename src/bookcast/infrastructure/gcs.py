@@ -11,15 +11,6 @@ def _remove_prefix(filename: pathlib.Path) -> pathlib.Path:
 
 class GCSFileUploadable:
     @classmethod
-    def _fetch_text_from_gcs(cls, source_file_name: pathlib.Path) -> str:
-        destination_key = _remove_prefix(source_file_name)
-
-        storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
-        bucket = storage_client.bucket(GOOGLE_CLOUD_STORAGE_BUCKET)
-        blob = bucket.blob(str(destination_key))
-        return blob.download_as_text(encoding="utf-8")
-
-    @classmethod
     def _download_from_gcs(cls, source_file_name: pathlib.Path) -> None:
         destination_key = _remove_prefix(source_file_name)
 

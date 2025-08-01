@@ -34,14 +34,6 @@ class OCRTextFileService(GCSFileUploadable):
 
         return text_path
 
-    @classmethod
-    def fetch_text_from_gcs(cls, filename: str, page_number: int) -> str:
-        text_dir = build_text_directory(filename)
-        text_dir.mkdir(parents=True, exist_ok=True)
-
-        text_path = resolve_text_path(filename, page_number)
-        return cls._fetch_text_from_gcs(text_path)
-
 
 class ScriptFileService(GCSFileUploadable):
     @classmethod
@@ -91,8 +83,30 @@ class TTSFileService(GCSFileUploadable):
 
         return audio_path
 
+    @classmethod
+    def bulk_download_from_gcs(cls, filename: str, chapter_number: int, indices: List[int]) -> List[pathlib.Path]:
+        audio_dir = build_audio_directory(filename)
+        audio_dir.mkdir(parents=True, exist_ok=True)
 
-class AudioFileService(GCSFileUploadable):
+        downloaded_paths = []
+        for index in indices:
+            audio_path = resolve_audio_path(filename, chapter_number, index)
+            cls._download_from_gcs(audio_path)
+            downloaded_paths.append(audio_path)
+
+        return downloaded_paths
+
+    @classmethod
+    def download_from_gcs(cls, filename: str, chapter_number: int, index: int) -> pathlib.Path:
+        audio_dir = build_audio_directory(filename)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        audio_path = resolve_audio_path(filename, chapter_number, index)
+        cls._download_from_gcs(audio_path)
+        return audio_path
+
+
+class CompletedAudioFileService(GCSFileUploadable):
     @classmethod
     def read(cls, filename: str, chapter_number: int) -> AudioSegment:
         output_path = resolve_audio_output_path(filename, chapter_number)

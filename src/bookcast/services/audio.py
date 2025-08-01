@@ -4,7 +4,7 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 from bookcast.entities import Chapter, Project
-from bookcast.services.file import AudioFileService, TTSFileService
+from bookcast.services.file import CompletedAudioFileService, TTSFileService
 
 logger = getLogger(__name__)
 
@@ -66,7 +66,7 @@ class AudioService:
             script_with_bgm = script_audio.overlay(bgm_audio)
             output_audio = jingle_audio + script_with_bgm
 
-            source_file_path = AudioFileService.write(chapter.filename, chapter.chapter_number, output_audio)
-            AudioFileService.upload_gcs_from_file(source_file_path)
+            source_file_path = CompletedAudioFileService.write(chapter.filename, chapter.chapter_number, output_audio)
+            CompletedAudioFileService.upload_gcs_from_file(source_file_path)
 
         logger.info("Audio generation completed successfully.")

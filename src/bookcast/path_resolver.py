@@ -30,6 +30,11 @@ def build_audio_directory(filename: str) -> Path:
     return base_path / "audio"
 
 
+def build_completed_audio_directory(filename: str) -> Path:
+    base_path = build_book_directory(filename)
+    return base_path / "completed_audio"
+
+
 def resolve_image_path(filename: str, page_number: int) -> Path:
     image_dir = build_image_directory(filename)
     return image_dir / f"page_{page_number:03d}.png"
@@ -51,5 +56,5 @@ def resolve_audio_path(filename: str, chapter_num: int, index: int) -> Path:
 
 
 def resolve_audio_output_path(filename: str, chapter_num: int) -> Path:
-    audio_dir = build_audio_directory(filename)
+    audio_dir = build_completed_audio_directory(filename)
     return audio_dir / f"chapter_{chapter_num:03d}_output.wav"
