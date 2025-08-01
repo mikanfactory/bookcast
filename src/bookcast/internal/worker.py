@@ -82,8 +82,10 @@ async def start_creating_audio(project_id: int):
     ProjectService.update_project_status(project, ProjectStatus.start_creating_audio)
     ChapterService.update_chapters_status(chapters, ChapterStatus.start_creating_audio)
 
-    # TODO
-    TTSFileService.download_from_gcs(project.filename, 1, 1)
+    for chapter in chapters:
+        for i in range(chapter.script_file_count):
+            TTSFileService.download_from_gcs(project.filename, chapter.id, i)
+
     audio_service.generate_audio(project, chapters)
 
     ProjectService.update_project_status(project, ProjectStatus.creating_audio_completed)
