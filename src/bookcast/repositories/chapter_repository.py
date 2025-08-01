@@ -5,25 +5,33 @@ class ChapterRepository:
     def __init__(self, db):
         self.db = db
 
-    def find(self, chapter_id: int):
+    def find(self, chapter_id: int) -> Chapter | None:
         response = self.db.table("chapter").select("*").eq("id", chapter_id).execute()
-        return response
+        if len(response.data):
+            return Chapter(**response.data[0])
+        return None
 
-    def select_by_project_id(self, project_id: int):
+    def select_by_project_id(self, project_id: int) -> list[Chapter]:
         response = self.db.table("chapter").select("*").eq("project_id", project_id).execute()
-        return response
+        if len(response.data):
+            return [Chapter(**item) for item in response.data]
+        return []
 
-    def create(self, chapter: Chapter):
+    def create(self, chapter: Chapter) -> Chapter | None:
         exclude_fields = {"id", "extracted_text", "created_at", "updated_at"}
         response = self.db.table("chapter").insert(chapter.model_dump(exclude=exclude_fields)).execute()
-        return response
+        if len(response.data):
+            return Chapter(**response.data[0])
+        return None
 
-    def update(self, chapter: Chapter):
-        exclude_fields = {"updated_at"}
+    def update(self, chapter: Chapter) -> Chapter | None:
+        exclude_fields = {"id", "created_at", "updated_at"}
         response = (
             self.db.table("chapter").update(chapter.model_dump(exclude=exclude_fields)).eq("id", chapter.id).execute()
         )
-        return response
+        if len(response.data):
+            return Chapter(**response.data[0])
+        return None
 
     def delete(self, chapter_id: int):
         response = self.db.table("chapter").delete().eq("id", chapter_id).execute()

@@ -55,3 +55,11 @@ line-length = 120
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+addopts = '-m "not integration"'
+markers = [
+    "unit: mark a test as a unit test",
+    "integration: mark a test as an integration test",
+]
+testpaths = ["tests/"]
