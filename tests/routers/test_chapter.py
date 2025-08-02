@@ -17,9 +17,9 @@ def create_mock_chapter_service():
 
 @pytest.fixture
 def client_with_mock():
-    mock_service = create_mock_chapter_service()
+    chapter_service = create_mock_chapter_service()
 
-    mock_service.chapter_repo.select_chapter_by_project_id.return_value = [
+    chapter_service.chapter_repo.select_chapter_by_project_id.return_value = [
         Chapter(
             id=1,
             project_id=1,
@@ -44,10 +44,10 @@ def client_with_mock():
         ),
     ]
 
-    app.dependency_overrides[get_chapter_service] = lambda: mock_service
+    app.dependency_overrides[get_chapter_service] = lambda: chapter_service
 
     client = TestClient(app)
-    yield client, mock_service
+    yield client, chapter_service
 
     app.dependency_overrides.clear()
 
@@ -55,7 +55,7 @@ def client_with_mock():
 class TestCreateChapters:
     @pytest.mark.skip("Skipping test_create_chapters as it is not implemented yet")
     def test_create_chapters(self, client_with_mock):
-        client, mock_service = client_with_mock
+        client, chapter_service = client_with_mock
 
         response = client.post("/api/v1/chapters/create_chapters", data={})
         assert response.status_code == 200

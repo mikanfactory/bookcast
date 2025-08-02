@@ -28,14 +28,14 @@ def create_mock_chapter_service():
 
 @pytest.fixture
 def client_with_mock():
-    mock_project_service = create_mock_project_service()
-    mock_chapter_service = create_mock_chapter_service()
+    project_service = create_mock_project_service()
+    chapter_service = create_mock_chapter_service()
 
-    mock_project_service.find_project.return_value = Project(
+    project_service.find_project.return_value = Project(
         id=1, filename="test.pdf", max_page_number=20, status=ProjectStatus.not_started
     )
 
-    mock_chapter_service.select_chapters.return_value = [
+    chapter_service.select_chapters.return_value = [
         Chapter(
             id=1,
             project_id=1,
@@ -60,21 +60,21 @@ def client_with_mock():
         ),
     ]
 
-    app.dependency_overrides[get_project_service] = lambda: mock_project_service
-    app.dependency_overrides[get_chapter_service] = lambda: mock_chapter_service
+    app.dependency_overrides[get_project_service] = lambda: project_service
+    app.dependency_overrides[get_chapter_service] = lambda: chapter_service
 
     client = TestClient(app)
-    yield client, mock_project_service, mock_chapter_service
+    yield client, project_service, chapter_service
 
     app.dependency_overrides.clear()
 
 
 class TestStartOCR:
     @patch("bookcast.internal.worker.ocr_service")
-    def test_start_ocr_success(self, mock_ocr_service, client_with_mock):
-        client, mock_project_service, mock_chapter_service = client_with_mock
+    def test_start_ocr_success(self, ocr_service, client_with_mock):
+        client, project_service, chapter_service = client_with_mock
 
-        mock_ocr_service.process.return_value = [
+        ocr_service.process.return_value = [
             OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Chapter 1 page 1 text"),
             OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Chapter 1 page 2 text"),
             OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
@@ -85,21 +85,21 @@ class TestStartOCR:
         assert response.status_code == 200
         assert response.json() == {"status": 200}
 
-        mock_project_service.find_project.assert_called_once_with(1)
-        mock_chapter_service.select_chapters.assert_called_once_with(1)
-        mock_ocr_service.process.assert_called_once()
-        mock_project_service.update_project_status.assert_called()
-        mock_chapter_service.update_chapter_extracted_text.assert_called_once()
+        project_service.find_project.assert_called_once_with(1)
+        chapter_service.select_chapters.assert_called_once_with(1)
+        ocr_service.process.assert_called_once()
+        project_service.update_project_status.assert_called()
+        chapter_service.update_chapter_extracted_text.assert_called_once()
 
 
 class TestStartScriptWriting:
     @patch("bookcast.internal.worker.script_writing_service")
-    def test_start_script_writing_success(self, mock_script_service, client_with_mock):
-        client, mock_project_service, mock_chapter_service = client_with_mock
+    def test_start_script_writing_success(self, script_service, client_with_mock):
+        client, project_service, chapter_service = client_with_mock
 
-        mock_project_service.find_project.return_value.status = ProjectStatus.ocr_completed
+        project_service.find_project.return_value.status = ProjectStatus.ocr_completed
 
-        mock_script_service.process.return_value = [
+        script_service.process.return_value = [
             ScriptWritingWorkerResult(chapter_id=1, script="Generated script for chapter 1"),
             ScriptWritingWorkerResult(chapter_id=2, script="Generated script for chapter 2"),
         ]
@@ -109,21 +109,21 @@ class TestStartScriptWriting:
         assert response.status_code == 200
         assert response.json() == {"status": 200}
 
-        mock_project_service.find_project.assert_called_once_with(1)
-        mock_chapter_service.select_chapters.assert_called_once_with(1)
-        mock_script_service.process.assert_called_once()
-        mock_project_service.update_project_status.assert_called()
-        mock_chapter_service.update_chapter_script.assert_called_once()
+        project_service.find_project.assert_called_once_with(1)
+        chapter_service.select_chapters.assert_called_once_with(1)
+        script_service.process.assert_called_once()
+        project_service.update_project_status.assert_called()
+        chapter_service.update_chapter_script.assert_called_once()
 
 
 class TestStartTTS:
     @patch("bookcast.internal.worker.tts_service")
-    def test_start_tts_success(self, mock_tts_service, client_with_mock):
-        client, mock_project_service, mock_chapter_service = client_with_mock
+    def test_start_tts_success(self, tts_service, client_with_mock):
+        client, project_service, chapter_service = client_with_mock
 
-        mock_project_service.find_project.return_value.status = ProjectStatus.writing_script_completed
+        project_service.find_project.return_value.status = ProjectStatus.writing_script_completed
 
-        mock_tts_service.generate_audio.return_value = [
+        tts_service.generate_audio.return_value = [
             TTSWorkerResult(chapter_id=1, index=3),
             TTSWorkerResult(chapter_id=2, index=2),
         ]
@@ -133,29 +133,29 @@ class TestStartTTS:
         assert response.status_code == 200
         assert response.json() == {"status": 200}
 
-        mock_project_service.find_project.assert_called_once_with(1)
-        mock_chapter_service.select_chapters.assert_called_once_with(1)
-        mock_tts_service.generate_audio.assert_called_once()
-        mock_project_service.update_project_status.assert_called()
-        mock_chapter_service.update_chapter_script_file_count.assert_called_once()
+        project_service.find_project.assert_called_once_with(1)
+        chapter_service.select_chapters.assert_called_once_with(1)
+        tts_service.generate_audio.assert_called_once()
+        project_service.update_project_status.assert_called()
+        chapter_service.update_chapter_script_file_count.assert_called_once()
 
 
 class TestStartCreatingAudio:
     @patch("bookcast.internal.worker.audio_service")
     @patch("bookcast.internal.worker.TTSFileService")
-    def test_start_creating_audio_success(self, mock_file_service, mock_audio_service, client_with_mock):
-        client, mock_project_service, mock_chapter_service = client_with_mock
+    def test_start_creating_audio_success(self, file_service, audio_service, client_with_mock):
+        client, project_service, chapter_service = client_with_mock
 
-        mock_project_service.find_project.return_value.status = ProjectStatus.tts_completed
+        project_service.find_project.return_value.status = ProjectStatus.tts_completed
 
         response = client.post("/internal/api/v1/workers/start_creating_audio/1")
 
         assert response.status_code == 200
         assert response.json() == {"status": 200}
 
-        mock_project_service.find_project.assert_called_once_with(1)
-        mock_chapter_service.select_chapters.assert_called_once_with(1)
-        mock_file_service.download_from_gcs.assert_called()
-        mock_audio_service.generate_audio.assert_called_once()
-        mock_project_service.update_project_status.assert_called()
-        mock_chapter_service.update_chapters_status.assert_called()
+        project_service.find_project.assert_called_once_with(1)
+        chapter_service.select_chapters.assert_called_once_with(1)
+        file_service.download_from_gcs.assert_called()
+        audio_service.generate_audio.assert_called_once()
+        project_service.update_project_status.assert_called()
+        chapter_service.update_chapters_status.assert_called()
