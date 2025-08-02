@@ -2,26 +2,22 @@ from typing import BinaryIO
 
 from bookcast.entities import Project, ProjectStatus
 from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.db import supabase_client
-
-chapter_repository = ChapterRepository(supabase_client)
-project_repository = ProjectRepository(supabase_client)
 
 
 class ProjectService:
-    @classmethod
-    def fetch_all_projects(cls) -> list[Project]:
-        return project_repository.select_all()
+    def __init__(self, project_repo: ProjectRepository, chapter_repo: ChapterRepository):
+        self.project_repo = project_repo
+        self.chapter_repo = chapter_repo
 
-    @classmethod
-    def find_project(cls, project_id: int) -> Project:
-        return project_repository.find(project_id)
+    def fetch_all_projects(self) -> list[Project]:
+        return self.project_repo.select_all()
 
-    @classmethod
-    def create_project(cls, filename: str, file: BinaryIO) -> Project:
+    def find_project(self, project_id: int) -> Project:
+        return self.project_repo.find(project_id)
+
+    def create_project(self, filename: str, file: BinaryIO) -> Project:
         pass
 
-    @classmethod
-    def update_project_status(cls, project: Project, status: ProjectStatus):
+    def update_project_status(self, project: Project, status: ProjectStatus):
         project.status = status
-        project_repository.update(project)
+        self.project_repo.update(project)
