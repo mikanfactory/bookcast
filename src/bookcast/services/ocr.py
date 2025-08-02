@@ -37,14 +37,6 @@ class EvaluateResult(BaseModel):
     calibration_reason: str = Field(default="", description="校正理由")
 
 
-def format_reflections(reflections: list[str]) -> str:
-    acc = ""
-    for i, reflection in enumerate(reflections):
-        acc += f"{i + 1}: {reflection}\n"
-
-    return acc
-
-
 class OCRExecutor:
     def __init__(self, llm):
         self.llm = llm
@@ -135,13 +127,13 @@ class OCROrchestrator:
         self.graph = self._create_graph()
 
     async def _execute_ocr(self, state: State) -> dict:
-        result = await self.ocr_agent.run(state)
+        result: OCRResult = await self.ocr_agent.run(state)
         return {
             "extracted_string": result.extracted_string,
         }
 
     async def _calibrate_result(self, state: State) -> dict:
-        result = await self.evaluator.run(state)
+        result: EvaluateResult = await self.evaluator.run(state)
         if result.is_valid:
             return {"is_valid": True}
         else:
@@ -162,7 +154,7 @@ class OCROrchestrator:
 
     async def run(self, page_number: int, base64_image: str) -> str:
         state = State(page_number=page_number, base64_image=base64_image)
-        result = await self.graph.ainvoke(state, config={"run_name": "OCRAgent"})
+        result: dict = await self.graph.ainvoke(state, config={"run_name": "OCRAgent"})
 
         if result["is_valid"]:
             return result["extracted_string"]
@@ -175,13 +167,13 @@ class OCRService:
         self.semaphore = asyncio.Semaphore(10)
 
     @staticmethod
-    def _image_to_base64_png(image: Image.Image) -> str:
+    def image_to_base64_png(image: Image.Image) -> str:
         with io.BytesIO() as buf:
             image.save(buf, format="PNG")
             return base64.b64encode(buf.getvalue()).decode()
 
     async def _extract(self, page_number: int, image: Image.Image) -> str:
-        base64_image = self._image_to_base64_png(image)
+        base64_image = self.image_to_base64_png(image)
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
         ocr_agent = OCROrchestrator(llm)
         response = await ocr_agent.run(page_number, base64_image)
