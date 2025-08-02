@@ -14,12 +14,14 @@ class ChapterService:
     def create_chapters(self, project_id: int, chapters: list[Chapter]):
         pass
 
-    def update_chapters_status(self, chapters: list[Chapter], status: ChapterStatus):
+    def update_chapters_status(self, chapters: list[Chapter], status: ChapterStatus) -> list[Chapter]:
         for chapter in chapters:
             chapter.status = status
             self.chapter_repo.update(chapter)
 
-    def update_chapter_extracted_text(self, chapters: list[Chapter], results: list[OCRWorkerResult]) -> None:
+        return chapters
+
+    def update_chapter_extracted_text(self, chapters: list[Chapter], results: list[OCRWorkerResult]) -> list[Chapter]:
         results.sort(key=lambda x: x.page_number)
 
         for chapter in chapters:
@@ -32,7 +34,9 @@ class ChapterService:
             chapter.extracted_text = "\n".join(acc)
             self.chapter_repo.update(chapter)
 
-    def update_chapter_script(self, chapters: list[Chapter], results: list[ScriptWritingWorkerResult]) -> None:
+        return chapters
+
+    def update_chapter_script(self, chapters: list[Chapter], results: list[ScriptWritingWorkerResult]) -> list[Chapter]:
         for chapter in chapters:
             for result in results:
                 if result.chapter_id == chapter.id:
@@ -41,7 +45,11 @@ class ChapterService:
             chapter.status = ChapterStatus.writing_script_completed
             self.chapter_repo.update(chapter)
 
-    def update_chapter_script_file_count(self, chapters: list[Chapter], results: list[TTSWorkerResult]) -> None:
+        return chapters
+
+    def update_chapter_script_file_count(
+        self, chapters: list[Chapter], results: list[TTSWorkerResult]
+    ) -> list[Chapter]:
         results.sort(key=lambda x: x.index)
 
         for chapter in chapters:
@@ -51,3 +59,5 @@ class ChapterService:
 
             chapter.status = ChapterStatus.tts_completed
             self.chapter_repo.update(chapter)
+
+        return chapters

@@ -18,6 +18,7 @@ class ProjectService:
     def create_project(self, filename: str, file: BinaryIO) -> Project:
         pass
 
-    def update_project_status(self, project: Project, status: ProjectStatus):
+    def update_project_status(self, project: Project, status: ProjectStatus) -> Project:
         project.status = status
         self.project_repo.update(project)
+        return project
