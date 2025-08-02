@@ -11,6 +11,12 @@ class ProjectRepository:
             return Project(**response.data[0])
         return None
 
+    def select_all(self) -> list[Project]:
+        response = self.db.table("project").select("*").execute()
+        if len(response.data):
+            return [Project(**item) for item in response.data]
+        return []
+
     def create(self, project: Project) -> Project | None:
         exclude_fields = {"id", "created_at", "updated_at"}
         response = self.db.table("project").insert(project.model_dump(exclude=exclude_fields)).execute()

@@ -11,11 +11,11 @@ project_repository = ProjectRepository(supabase_client)
 class ProjectService:
     @classmethod
     def fetch_all_projects(cls) -> list[Project]:
-        pass
+        return project_repository.select_all()
 
     @classmethod
     def find_project(cls, project_id: int) -> Project:
-        pass
+        return project_repository.find(project_id)
 
     @classmethod
     def create_project(cls, filename: str, file: BinaryIO) -> Project:
