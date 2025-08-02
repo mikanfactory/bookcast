@@ -29,7 +29,7 @@ async def start_ocr(
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
     project = project_service.find_project(project_id)
-    chapters = chapter_service.select_chapters(project_id)
+    chapters = chapter_service.select_chapter_by_project_id(project_id)
     if project.status != ProjectStatus.not_started:
         return {"status": 400}
 
@@ -50,7 +50,7 @@ async def start_script_writing(
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
     project = project_service.find_project(project_id)
-    chapters = chapter_service.select_chapters(project_id)
+    chapters = chapter_service.select_chapter_by_project_id(project_id)
     if project.status != ProjectStatus.ocr_completed:
         return {"status": 400}
 
@@ -71,7 +71,7 @@ async def start_tts(
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
     project = project_service.find_project(project_id)
-    chapters = chapter_service.select_chapters(project_id)
+    chapters = chapter_service.select_chapter_by_project_id(project_id)
     if project.status != ProjectStatus.writing_script_completed:
         return {"status": 400}
 
@@ -92,7 +92,7 @@ async def start_creating_audio(
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
     project = project_service.find_project(project_id)
-    chapters = chapter_service.select_chapters(project_id)
+    chapters = chapter_service.select_chapter_by_project_id(project_id)
     if project.status != ProjectStatus.tts_completed:
         return {"status": 400}
 

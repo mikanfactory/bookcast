@@ -11,7 +11,7 @@ class ChapterRepository:
             return Chapter(**response.data[0])
         return None
 
-    def select_by_project_id(self, project_id: int) -> list[Chapter]:
+    def select_chapter_by_project_id(self, project_id: int) -> list[Chapter]:
         response = self.db.table("chapter").select("*").eq("project_id", project_id).execute()
         if len(response.data):
             return [Chapter(**item) for item in response.data]

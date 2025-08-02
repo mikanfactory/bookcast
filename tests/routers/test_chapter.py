@@ -19,7 +19,7 @@ def create_mock_chapter_service():
 def client_with_mock():
     mock_service = create_mock_chapter_service()
 
-    mock_service.chapter_repo.select_by_project_id.return_value = [
+    mock_service.chapter_repo.select_chapter_by_project_id.return_value = [
         Chapter(
             id=1,
             project_id=1,

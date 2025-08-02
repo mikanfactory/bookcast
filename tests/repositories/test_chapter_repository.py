@@ -18,7 +18,7 @@ class TestChapterRepository:
     @pytest.mark.integration
     def test_select_by_project_id(self):
         repo = ChapterRepository(supabase_client)
-        chapters = repo.select_by_project_id(1)
+        chapters = repo.select_chapter_by_project_id(1)
 
         assert isinstance(chapters, list)
         assert isinstance(chapters[0], Chapter)

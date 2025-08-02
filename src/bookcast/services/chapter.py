@@ -7,8 +7,8 @@ class ChapterService:
         self.chapter_repo = chapter_repo
         self.project_repo = project_repo
 
-    def select_chapters(self, project_id: int) -> list[Chapter]:
-        return self.chapter_repo.select_by_project_id(project_id)
+    def select_chapter_by_project_id(self, project_id: int) -> list[Chapter]:
+        return self.chapter_repo.select_chapter_by_project_id(project_id)
 
     # TODO
     def create_chapters(self, project_id: int, chapters: list[Chapter]):
