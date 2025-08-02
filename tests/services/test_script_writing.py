@@ -1,12 +1,16 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from bookcast.config import GEMINI_API_KEY
+from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus, ScriptWritingWorkerResult
 from bookcast.services.script_writing import (
     PodcastOrchestrator,
     PodcastScriptEvaluator,
     PodcastScriptWriter,
     PodcastTopicSearcher,
+    ScriptWritingService,
 )
 
 
@@ -33,3 +37,43 @@ def test_podcast_script_evaluator(llm):
 def test_podcast_orchestrator(llm):
     orchestrator = PodcastOrchestrator(llm)
     assert orchestrator
+
+
+class TestScriptWritingServiceIntegration:
+    @pytest.mark.integration
+    @patch("bookcast.services.script_writing.PodcastOrchestrator")
+    def test_process(self, mock_orchestrator_class):
+        project = Project(
+            id=1, filename="test_sample.pdf", max_page_number=3, status=ProjectStatus.start_writing_script
+        )
+        chapters = [
+            Chapter(
+                id=1,
+                project_id=1,
+                chapter_number=1,
+                start_page=1,
+                end_page=3,
+                status=ChapterStatus.start_writing_script,
+                extracted_text="This is extracted text from the chapter.",
+            )
+        ]
+
+        mock_orchestrator = AsyncMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+        mock_orchestrator.run.return_value = (
+            "Speaker1: こんにちは。今日は面白い内容ですね。\nSpeaker2: 本当ですね。詳しく説明していきましょう。"
+        )
+
+        script_writing_service = ScriptWritingService()
+        results = script_writing_service.process(project, chapters)
+
+        assert isinstance(results, list)
+        assert len(results) == 1
+
+        result = results[0]
+        assert isinstance(result, ScriptWritingWorkerResult)
+        assert result.chapter_id == 1
+        assert "Speaker1:" in result.script
+        assert "Speaker2:" in result.script
+
+        mock_orchestrator.run.assert_called_once_with("This is extracted text from the chapter.")
