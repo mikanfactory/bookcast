@@ -27,60 +27,63 @@ class TextToSpeechService:
         chunks = text_splitter.split_text(source_script)
         return chunks
 
-    async def _generate(self, script: str, chapter: Chapter, index: int) -> TTSWorkerResult:
+    async def _invoke(self, script: str) -> bytes:
+        response = await self.client.aio.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=script,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                        speaker_voice_configs=[
+                            types.SpeakerVoiceConfig(
+                                speaker="Speaker1",
+                                voice_config=types.VoiceConfig(
+                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                        voice_name="Alnilam",
+                                    )
+                                ),
+                            ),
+                            types.SpeakerVoiceConfig(
+                                speaker="Speaker2",
+                                voice_config=types.VoiceConfig(
+                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                        voice_name="Autonoe",
+                                    )
+                                ),
+                            ),
+                        ]
+                    )
+                ),
+            ),
+        )
+        data = response.candidates[0].content.parts[0].inline_data.data
+        return data
+
+    async def _generate(self, project: Project, script: str, chapter: Chapter, index: int) -> TTSWorkerResult:
         async with self.semaphore:
             logger.info(f"Generating audio for chapter: {str(chapter)}, index: {index}")
-            response = await self.client.aio.models.generate_content(
-                model="gemini-2.5-flash-preview-tts",
-                contents=script,
-                config=types.GenerateContentConfig(
-                    response_modalities=["AUDIO"],
-                    speech_config=types.SpeechConfig(
-                        multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
-                            speaker_voice_configs=[
-                                types.SpeakerVoiceConfig(
-                                    speaker="Speaker1",
-                                    voice_config=types.VoiceConfig(
-                                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                            voice_name="Alnilam",
-                                        )
-                                    ),
-                                ),
-                                types.SpeakerVoiceConfig(
-                                    speaker="Speaker2",
-                                    voice_config=types.VoiceConfig(
-                                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                            voice_name="Autonoe",
-                                        )
-                                    ),
-                                ),
-                            ]
-                        )
-                    ),
-                ),
-            )
-
-        data = response.candidates[0].content.parts[0].inline_data.data
+            data = await self._invoke(script)
 
         logger.info(f"Saving audio for chapter {chapter.chapter_number}, index {index}.")
-        source_file_path = TTSFileService.write(chapter.filename, chapter.chapter_number, index, data)
+        source_file_path = TTSFileService.write(project.filename, chapter.chapter_number, index, data)
         TTSFileService.upload_gcs_from_file(source_file_path)
         return TTSWorkerResult(chapter_id=chapter.id, index=index)
 
-    async def _generate_audio(self, chapters: list[Chapter]) -> list[TTSWorkerResult]:
+    async def _generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
         tasks = []
         for chapter in chapters:
             chunked_scripts = self.split_script(chapter.script)
             logger.info(f"Splitting script for chapter {chapter.chapter_number} into {len(chunked_scripts)} chunks.")
 
             for i, script in enumerate(chunked_scripts):
-                tasks.append(self._generate(script, chapter, i))
+                tasks.append(self._generate(project, script, chapter, i))
 
         return await asyncio.gather(*tasks)
 
     def generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
         logger.info("Starting audio generation for chapters.")
-        results = asyncio.run(self._generate_audio(chapters))
+        results = asyncio.run(self._generate_audio(project, chapters))
         logger.info("Audio generation completed successfully.")
 
         return results
