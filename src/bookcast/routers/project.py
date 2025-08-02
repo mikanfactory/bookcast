@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from bookcast.dependencies import get_project_service
 from bookcast.entities import Project
@@ -18,7 +18,11 @@ async def index(project_service: ProjectService = Depends(get_project_service)) 
 
 @router.get("/{project_id}")
 async def show(project_id: int, project_service: ProjectService = Depends(get_project_service)) -> Project:
-    return project_service.find_project(project_id)
+    results = project_service.find_project(project_id)
+    print(results)
+    if results:
+        return results
+    raise HTTPException(status_code=404, detail="Project not found")
 
 
 @router.post("/upload_file")

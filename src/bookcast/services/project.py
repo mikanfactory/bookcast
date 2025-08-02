@@ -12,7 +12,7 @@ class ProjectService:
     def fetch_all_projects(self) -> list[Project]:
         return self.project_repo.select_all()
 
-    def find_project(self, project_id: int) -> Project:
+    def find_project(self, project_id: int) -> Project | None:
         return self.project_repo.find(project_id)
 
     def create_project(self, filename: str, file: BinaryIO) -> Project:
