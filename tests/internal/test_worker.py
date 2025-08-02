@@ -35,7 +35,7 @@ def client_with_mock():
         id=1, filename="test.pdf", max_page_number=20, status=ProjectStatus.not_started
     )
 
-    chapter_service.select_chapters.return_value = [
+    chapter_service.select_chapter_by_project_id.return_value = [
         Chapter(
             id=1,
             project_id=1,
@@ -86,7 +86,7 @@ class TestStartOCR:
         assert response.json() == {"status": 200}
 
         project_service.find_project.assert_called_once_with(1)
-        chapter_service.select_chapters.assert_called_once_with(1)
+        chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
         ocr_service.process.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapter_extracted_text.assert_called_once()
@@ -110,7 +110,7 @@ class TestStartScriptWriting:
         assert response.json() == {"status": 200}
 
         project_service.find_project.assert_called_once_with(1)
-        chapter_service.select_chapters.assert_called_once_with(1)
+        chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
         script_service.process.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapter_script.assert_called_once()
@@ -134,7 +134,7 @@ class TestStartTTS:
         assert response.json() == {"status": 200}
 
         project_service.find_project.assert_called_once_with(1)
-        chapter_service.select_chapters.assert_called_once_with(1)
+        chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
         tts_service.generate_audio.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapter_script_file_count.assert_called_once()
@@ -154,7 +154,7 @@ class TestStartCreatingAudio:
         assert response.json() == {"status": 200}
 
         project_service.find_project.assert_called_once_with(1)
-        chapter_service.select_chapters.assert_called_once_with(1)
+        chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
         file_service.download_from_gcs.assert_called()
         audio_service.generate_audio.assert_called_once()
         project_service.update_project_status.assert_called()
