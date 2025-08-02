@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, OCRWorkerResult, Project
 from bookcast.path_resolver import build_downloads_path
-from bookcast.services.chapter import ChapterService
 
 logger = getLogger(__name__)
 
@@ -215,6 +214,4 @@ class OCRService:
         logger.info(f"Starting OCR: {project.filename}")
         results = asyncio.run(self._extract_text_from_pdf(project, chapters))
         logger.info(f"Completed OCR: {project.filename}")
-
-        ChapterService.update_chapter_extracted_text(chapters, results)
         return results

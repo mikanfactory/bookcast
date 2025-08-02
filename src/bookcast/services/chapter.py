@@ -1,29 +1,25 @@
 from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, ScriptWritingWorkerResult, TTSWorkerResult
 from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.db import supabase_client
-
-chapter_repository = ChapterRepository(supabase_client)
-project_repository = ProjectRepository(supabase_client)
 
 
 class ChapterService:
-    @classmethod
-    def select_chapters(cls, project_id: int) -> list[Chapter]:
-        return chapter_repository.select_by_project_id(project_id)
+    def __init__(self, chapter_repo: ChapterRepository, project_repo: ProjectRepository):
+        self.chapter_repo = chapter_repo
+        self.project_repo = project_repo
+
+    def select_chapters(self, project_id: int) -> list[Chapter]:
+        return self.chapter_repo.select_by_project_id(project_id)
 
     # TODO
-    @classmethod
-    def create_chapters(cls, project_id: int, chapters: list[Chapter]):
+    def create_chapters(self, project_id: int, chapters: list[Chapter]):
         pass
 
-    @classmethod
-    def update_chapters_status(cls, chapters: list[Chapter], status: ChapterStatus):
+    def update_chapters_status(self, chapters: list[Chapter], status: ChapterStatus):
         for chapter in chapters:
             chapter.status = status
-            chapter_repository.update(chapter)
+            self.chapter_repo.update(chapter)
 
-    @classmethod
-    def update_chapter_extracted_text(cls, chapters: list[Chapter], results: list[OCRWorkerResult]) -> None:
+    def update_chapter_extracted_text(self, chapters: list[Chapter], results: list[OCRWorkerResult]) -> None:
         results.sort(key=lambda x: x.page_number)
 
         for chapter in chapters:
@@ -34,20 +30,18 @@ class ChapterService:
 
             chapter.status = ChapterStatus.ocr_completed
             chapter.extracted_text = "\n".join(acc)
-            chapter_repository.update(chapter)
+            self.chapter_repo.update(chapter)
 
-    @classmethod
-    def update_chapter_script(cls, chapters: list[Chapter], results: list[ScriptWritingWorkerResult]) -> None:
+    def update_chapter_script(self, chapters: list[Chapter], results: list[ScriptWritingWorkerResult]) -> None:
         for chapter in chapters:
             for result in results:
                 if result.chapter_id == chapter.id:
                     chapter.script = result.script
 
             chapter.status = ChapterStatus.writing_script_completed
-            chapter_repository.update(chapter)
+            self.chapter_repo.update(chapter)
 
-    @classmethod
-    def update_chapter_script_file_count(cls, chapters: list[Chapter], results: list[TTSWorkerResult]) -> None:
+    def update_chapter_script_file_count(self, chapters: list[Chapter], results: list[TTSWorkerResult]) -> None:
         results.sort(key=lambda x: x.index)
 
         for chapter in chapters:
@@ -56,4 +50,4 @@ class ChapterService:
                     chapter.script_file_count = result.index
 
             chapter.status = ChapterStatus.tts_completed
-            chapter_repository.update(chapter)
+            self.chapter_repo.update(chapter)
