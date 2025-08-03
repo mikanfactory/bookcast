@@ -1,13 +1,13 @@
 import pytest
 
-from bookcast.config import SUPABASE_API_KEY, SUPABASE_PROJECT_URL
+from bookcast.config import SUPABASE_LOCAL_API_KEY, SUPABASE_LOCAL_PROJECT_URL
 from bookcast.entities import Chapter, Project
 from supabase import create_client
 
 
 @pytest.fixture(scope="session")
 def supabase_client():
-    return create_client(SUPABASE_PROJECT_URL, SUPABASE_API_KEY)
+    return create_client(SUPABASE_LOCAL_PROJECT_URL, SUPABASE_LOCAL_API_KEY)
 
 
 @pytest.fixture(scope="session", autouse=True)
