@@ -1,4 +1,5 @@
 import logging.config
+import warnings
 from pathlib import Path
 
 import yaml
@@ -8,3 +9,5 @@ with config_path.open() as f:
     config = yaml.safe_load(f)
 
 logging.config.dictConfig(config)
+
+warnings.filterwarnings("ignore", message="invalid escape sequence", category=SyntaxWarning)

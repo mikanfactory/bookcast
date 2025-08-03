@@ -11,17 +11,13 @@ dependencies = [
     "langchain>=0.3.26",
     "langchain-google-genai>=2.1.6",
     "langgraph>=0.5.1",
-    "langsmith>=0.4.4",
     "pdf2image>=1.17.0",
     "pillow>=11.2.1",
     "pydantic>=2.11.7",
     "pydub>=0.25.1",
-    "pypdf>=5.6.0",
     "python-dotenv>=1.1.0",
     "python-multipart>=0.0.20",
-    "streamlit>=1.45.1",
     "supabase>=2.17.0",
-    "tiktoken>=0.9.0",
 ]
 
 [tool.uv]
@@ -31,6 +27,7 @@ dev-dependencies = [
     "freezegun>=1.5.2",
     "ipython>=9.3.0",
     "matplotlib>=3.10.3",
+    "langsmith>=0.4.4",
     "pre-commit>=4.2.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",

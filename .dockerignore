@@ -1,0 +1,16 @@
+.claude
+.idea
+.venv
+
+scripts
+src/frontend
+supabase
+tests
+
+.env.org
+.gitignore
+.mcp.json
+.pre-commit-config.yaml
+CLAUDE.md
+README.md
+

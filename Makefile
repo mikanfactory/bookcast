@@ -17,3 +17,7 @@ test/integration:
 .PHONY: db/clean
 db/clean:
 	supabase db reset --local --yes
+
+deploy:
+	docker tag bookcast us-central1-docker.pkg.dev/hedgehog-fm/bookcast/bookcast-server && \
+	docker push us-central1-docker.pkg.dev/hedgehog-fm/bookcast/bookcast-server
