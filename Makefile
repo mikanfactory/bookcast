@@ -9,3 +9,11 @@ format:
 .PHONY: test
 test:
 	uv run pytest tests
+
+.PHONY: test/integration
+test/integration:
+	uv run pytest -m integration tests
+
+.PHONY: db/clean
+db/clean:
+	supabase db reset --local --yes

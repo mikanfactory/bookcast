@@ -2,44 +2,48 @@ import pytest
 
 from bookcast.entities.chapter import Chapter, ChapterStatus
 from bookcast.repositories.chapter_repository import ChapterRepository
-from bookcast.services.db import supabase_client
+
+
+@pytest.fixture
+def chapter_repository(supabase_client):
+    return ChapterRepository(supabase_client)
 
 
 class TestChapterRepository:
     @pytest.mark.integration
-    def test_find(self):
-        repo = ChapterRepository(supabase_client)
-        chapter = repo.find(14)
+    def test_find(self, chapter_repository, completed_project):
+        _, cs = completed_project
+        chapter = chapter_repository.find(cs[0].id)
         assert chapter.project_id is not None
 
-        chapter = repo.find(100)
+        chapter = chapter_repository.find(100)
         assert chapter is None
 
     @pytest.mark.integration
-    def test_select_by_project_id(self):
-        repo = ChapterRepository(supabase_client)
-        chapters = repo.select_chapter_by_project_id(1)
+    def test_select_by_project_id(self, chapter_repository, completed_project):
+        p, _ = completed_project
+        chapters = chapter_repository.select_chapter_by_project_id(p.id)
 
         assert isinstance(chapters, list)
         assert isinstance(chapters[0], Chapter)
 
     @pytest.mark.integration
-    def test_create(self):
-        repo = ChapterRepository(supabase_client)
-        chapter = Chapter(project_id=1, chapter_number=1, start_page=1, end_page=10)
-        created_chapter = repo.create(chapter)
+    def test_create(self, chapter_repository, starting_project):
+        p, _ = starting_project
+        chapter = Chapter(project_id=p.id, chapter_number=2, start_page=1, end_page=10)
+        created_chapter = chapter_repository.create(chapter)
 
         assert created_chapter.id is not None
         assert created_chapter.created_at is not None
         assert created_chapter.updated_at is not None
 
     @pytest.mark.integration
-    def test_update(self):
-        repo = ChapterRepository(supabase_client)
-        chapter = repo.find(30)
+    def test_update(self, chapter_repository, starting_project):
+        _, cs = starting_project
+        chapter = chapter_repository.find(cs[0].id)
 
         chapter.status = ChapterStatus.start_ocr
-        updated_chapter = repo.update(chapter)
+        updated_chapter = chapter_repository.update(chapter)
 
         assert updated_chapter.id is not None
         assert updated_chapter.created_at is not None
