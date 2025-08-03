@@ -24,6 +24,7 @@ class TestAudioServiceIntegration:
                 end_page=2,
                 status=ChapterStatus.start_creating_audio,
                 script="Speaker1: Hello there.\nSpeaker2: Hello back.",
+                script_file_count=1,
             ),
             Chapter(
                 id=2,
@@ -33,13 +34,11 @@ class TestAudioServiceIntegration:
                 end_page=3,
                 status=ChapterStatus.start_creating_audio,
                 script="Speaker1: Goodbye now.\nSpeaker2: See you tomorrow.",
+                script_file_count=1,
             ),
         ]
 
-        mock_audio_segments = [
-            AudioSegment.silent(duration=2000),  # 2秒の無音
-            AudioSegment.silent(duration=3000),  # 3秒の無音
-        ]
+        mock_audio_segments = AudioSegment.silent(duration=2000)
         mock_tts_file_service.read.return_value = mock_audio_segments
 
         mock_completed_audio_file_service.write.return_value = "/fake/path/output.wav"

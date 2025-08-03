@@ -56,18 +56,9 @@ class ScriptFileService(GCSFileUploadable):
 
 class TTSFileService(GCSFileUploadable):
     @classmethod
-    def read(cls, filename: str, chapter_number: int) -> List[AudioSegment]:
-        audio_files = []
-        index = 0
-        while True:
-            audio_path = resolve_audio_path(filename, chapter_number, index)
-            try:
-                audio = AudioSegment.from_wav(audio_path)
-                audio_files.append(audio)
-                index += 1
-            except FileNotFoundError:
-                break
-        return audio_files
+    def read(cls, filename: str, chapter_number: int, index: int) -> AudioSegment:
+        audio_path = resolve_audio_path(filename, chapter_number, index)
+        return AudioSegment.from_wav(audio_path)
 
     @classmethod
     def write(cls, filename: str, chapter_number: int, index: int, pcm_data: bytes) -> pathlib.Path:

@@ -46,7 +46,9 @@ class AudioService:
 
     @staticmethod
     def _coordinate_script(project: Project, chapter: Chapter) -> AudioSegment:
-        script_audios = TTSFileService.read(project.filename, chapter.chapter_number)
+        script_audios = [
+            TTSFileService.read(project.filename, chapter.chapter_number, i) for i in range(chapter.script_file_count)
+        ]
         acc = AudioSegment.empty()
         for script_audio in script_audios:
             script_audio = normalize(script_audio)
