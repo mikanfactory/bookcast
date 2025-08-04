@@ -18,6 +18,17 @@ test/integration:
 db/clean:
 	supabase db reset --local --yes
 
-deploy:
-	docker tag bookcast us-central1-docker.pkg.dev/hedgehog-fm/bookcast/bookcast-server && \
-	docker push us-central1-docker.pkg.dev/hedgehog-fm/bookcast/bookcast-server
+
+include .env
+IMAGE := $(GOOGLE_CLOUD_LOCATION)-docker.pkg.dev/$(GOOGLE_CLOUD_PROJECT)/bookcast/bookcast-server
+.PHONY: deploy/server
+deploy/server:
+	docker build --platform=linux/amd64 -t bookcast-server . && \
+	docker tag $(IMAGE) && \
+	docker push $(IMAGE) && \
+	gcloud run deploy bookcast-server \
+		--image=$(IMAGE):latest \
+		--set-env-vars=ENV=production \
+		--region=$(GOOGLE_CLOUD_LOCATION) \
+		--project=$(GOOGLE_CLOUD_PROJECT) && \
+	gcloud run services update-traffic bookcast-server --to-latest
