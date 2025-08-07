@@ -1,5 +1,4 @@
 .env
-*.iml
 
 # Python-generated files
 __pycache__/
@@ -12,3 +11,8 @@ wheels/
 # Virtual environments
 .venv
 
+downloads
+!downloads/.gitkeep
+
+tests/resources
+!tests/resources/.gitkeep
