@@ -2,8 +2,9 @@ from enum import StrEnum
 
 
 class SessionState(StrEnum):
+    project_id = "_project_id"
+    images = "_images"
     filename = "_filename"
-    max_page_number = "_max_page_number"
     chapters = "_chapters"
     podcast_setting = "_podcast_setting"
     podcast_script = "_podcast_script"

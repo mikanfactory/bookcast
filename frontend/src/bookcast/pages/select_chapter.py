@@ -2,8 +2,6 @@ import streamlit as st
 from streamlit.logger import get_logger
 
 from bookcast.page import Rooter
-from bookcast.path_resolver import resolve_image_path
-from bookcast.services.file import OCRTextFileService
 from bookcast.session_state import SessionState as ss
 from bookcast.view_models import ChaptersViewModel
 

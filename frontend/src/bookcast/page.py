@@ -11,9 +11,9 @@ class PageName(StrEnum):
 
 class Rooter:
     RootMap = {
-        PageName.PROJECT: "bookcast/pages/project.py",
-        PageName.CHAPTER: "bookcast/pages/select_chapter.py",
-        PageName.PODCAST: "bookcast/pages/podcast.py",
+        PageName.PROJECT: "pages/project.py",
+        PageName.CHAPTER: "pages/select_chapter.py",
+        PageName.PODCAST: "pages/podcast.py",
     }
 
     @classmethod

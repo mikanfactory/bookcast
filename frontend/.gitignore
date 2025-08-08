@@ -12,6 +12,4 @@ wheels/
 .venv
 
 downloads
-chapter.json
-
-tests/resources
+!downloads/.gitkeep
