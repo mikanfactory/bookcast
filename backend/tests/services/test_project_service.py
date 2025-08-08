@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock
+from io import BytesIO
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -22,6 +23,9 @@ def project_service_mock():
     ]
     project_service.project_repo.find.return_value = Project(
         id=1, filename="test1.pdf", max_page_number=10, status=ProjectStatus.not_started
+    )
+    project_service.project_repo.create.return_value = Project(
+        id=1, filename="test.pdf", max_page_number=5, status=ProjectStatus.not_started
     )
 
     return project_service
@@ -82,11 +86,21 @@ class TestUpdateProjectStatus:
 
 
 class TestCreateProject:
-    @pytest.mark.skip("Skipping test_create_project as it is not implemented yet")
     def test_create_project(self, project_service_mock):
         filename = "test.pdf"
-        file_mock = MagicMock()
+        file_content = b"mock file content"
+        file = BytesIO(file_content)
 
-        result = project_service_mock.create_project(filename, file_mock)
+        with (
+            patch("bookcast.services.project.convert_from_path") as mock_convert,
+            patch("bookcast.services.file.OCRImageFileService.write") as mock_write,
+            patch("bookcast.services.file.OCRImageFileService.upload_gcs_from_file") as mock_upload,
+        ):
+            mock_convert.return_value = [MagicMock() for _ in range(5)]
+            mock_write.return_value = "/tmp/test.pdf"
 
-        assert result is None
+            result = project_service_mock.create_project(filename, file)
+
+            assert result
+            assert isinstance(result, Project)
+            mock_upload.assert_called_once()

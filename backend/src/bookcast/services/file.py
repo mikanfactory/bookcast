@@ -7,13 +7,34 @@ from pydub import AudioSegment
 from bookcast.infrastructure.gcs import GCSFileUploadable
 from bookcast.path_resolver import (
     build_audio_directory,
+    build_book_directory,
     build_script_directory,
     build_text_directory,
     resolve_audio_output_path,
     resolve_audio_path,
+    resolve_book_path,
     resolve_script_path,
     resolve_text_path,
 )
+
+
+class OCRImageFileService(GCSFileUploadable):
+    @classmethod
+    def read(cls, filename: str) -> bytes:
+        image_path = resolve_book_path(filename)
+        with open(image_path, "rb") as f:
+            return f.read()
+
+    @classmethod
+    def write(cls, filename: str, image_data: bytes) -> pathlib.Path:
+        book_dir = build_book_directory(filename)
+        book_dir.mkdir(parents=True, exist_ok=True)
+
+        book_path = resolve_book_path(filename)
+        with open(book_path, "wb") as f:
+            f.write(image_data)
+
+        return book_path
 
 
 class OCRTextFileService(GCSFileUploadable):

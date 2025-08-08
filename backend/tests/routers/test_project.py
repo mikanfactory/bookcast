@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -25,6 +25,9 @@ def client_with_mock():
     ]
     project_service.project_repo.find.return_value = Project(
         id=1, filename="test1.pdf", max_page_number=10, status=ProjectStatus.not_started
+    )
+    project_service.project_repo.create.return_value = Project(
+        id=1, filename="test.pdf", max_page_number=5, status=ProjectStatus.not_started
     )
 
     app.dependency_overrides[get_project_service] = lambda: project_service
@@ -94,3 +97,33 @@ class TestShow:
         assert response.status_code == 404
 
         project_service.project_repo.find.assert_called_once_with(999)
+
+
+class TestUploadFile:
+    def test_upload_file(self, client_with_mock):
+        client, project_service = client_with_mock
+
+        with (
+            patch("bookcast.services.project.convert_from_path") as mock_convert,
+            patch("bookcast.services.file.OCRImageFileService.write") as mock_write,
+            patch("bookcast.services.file.OCRImageFileService.upload_gcs_from_file") as mock_upload,
+        ):
+            mock_convert.return_value = [MagicMock() for _ in range(5)]
+            mock_write.return_value = "/tmp/test.pdf"
+
+            file = b"mock file content"
+            response = client.post("/api/v1/projects/upload_file", files={"file": ("test.pdf", file)})
+
+            assert response.status_code == 200
+            resp = response.json()
+            assert resp["filename"] == "test.pdf"
+            assert resp["max_page_number"] == 5
+
+            project_service.project_repo.create.assert_called_once()
+            mock_upload.assert_called_once()
+
+    def test_upload_file_error(self, client_with_mock):
+        client, project_service = client_with_mock
+
+        response = client.post("/api/v1/projects/upload_file", files={})
+        assert response.status_code == 422  # Unprocessable Entity

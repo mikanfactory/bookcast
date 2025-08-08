@@ -35,6 +35,10 @@ def build_completed_audio_directory(filename: str) -> Path:
     return base_path / "completed_audio"
 
 
+def resolve_book_path(filename: str) -> Path:
+    return build_book_directory(filename) / filename
+
+
 def resolve_image_path(filename: str, page_number: int) -> Path:
     image_dir = build_image_directory(filename)
     return image_dir / f"page_{page_number:03d}.png"
