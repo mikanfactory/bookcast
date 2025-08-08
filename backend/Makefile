@@ -14,6 +14,13 @@ test:
 test/integration:
 	uv run pytest -m integration tests
 
+.PHONY: db/start
+db/start:
+	supabase start \
+	  --exclude gotrue,realtime,storage-api,imgproxy,kong, \
+				inbucket,pgadmin-schema-diff,migra,postgres-meta, \
+				studio,edge-runtime,logflare,vector
+
 .PHONY: db/clean
 db/clean:
 	supabase db reset --local --yes
