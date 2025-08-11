@@ -10,157 +10,141 @@ from bookcast.view_models import ProjectViewModel
 
 logger = get_logger(__name__)
 
-
-def initialize_session():
-    image_dir = st.session_state.get(ss.image_dir, None)
-    if not image_dir:
-        image_dir = pathlib.Path("downloads/3654812/images")  # デバッグ用
-
-    image_files = [image_dir / filename for filename in sorted(os.listdir(image_dir))]
-    max_page_number = len(image_files)
-
-    current_page = st.session_state.get(ss.current_page, 1)
-    project = st.session_state.get(ss.project, ProjectViewModel())
-    selected_chapter_num = st.session_state.get(ss.selected_chapter_num)
-
-    return image_files, max_page_number, current_page, project, selected_chapter_num
+# Constants
+DEFAULT_IMAGE_DIR = pathlib.Path("downloads/3654812/images")
+BUTTON_STYLE = {"use_container_width": True}
 
 
-def select_chapter(chapter_num: int):
-    st.session_state[ss.selected_chapter_num] = chapter_num
-    logger.info(f"Selected chapter {chapter_num}")
+def render_chapter_info(chapter_info, is_compact: bool = False):
+    start_text = f"P{chapter_info.start_page_number}" if chapter_info.start_page_number > 0 else "未設定"
+    end_text = f"P{chapter_info.end_page_number}" if chapter_info.end_page_number > 0 else "未設定"
 
-
-def add_new_chapter(project):
-    if project and project.chapters:
-        new_chapter_num = max(project.chapters.keys()) + 1
-        project.add_chapter(new_chapter_num)
+    if is_compact:
+        st.caption(f"開始: {start_text}")
+        st.caption(f"終了: {end_text}")
     else:
-        project = ProjectViewModel()
-        new_chapter_num = 1
-        project.add_chapter(new_chapter_num)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"開始ページ: {start_text}")
+        with col2:
+            st.info(f"終了ページ: {end_text}")
 
+
+def get_current_state():
+    image_dir = st.session_state.get(ss.image_dir) or DEFAULT_IMAGE_DIR
+    image_files = [image_dir / filename for filename in sorted(os.listdir(image_dir))]
+
+    return {
+        "image_files": image_files,
+        "max_pages": len(image_files),
+        "current_page": st.session_state.get(ss.current_page, 1),
+        "project": st.session_state.get(ss.project, ProjectViewModel()),
+        "selected_chapter": st.session_state.get(ss.selected_chapter_num)
+    }
+
+
+def navigate_page(direction: int, current_page: int, max_pages: int):
+    new_page = current_page + direction
+    if 1 <= new_page <= max_pages:
+        st.session_state[ss.current_page] = new_page
+
+
+def set_chapter_page(chapter_num: int, page_num: int, page_type: str, project: ProjectViewModel):
+    if page_type == "start":
+        project.set_chapter_start_page(chapter_num, page_num)
+    else:
+        project.set_chapter_end_page(chapter_num, page_num)
     st.session_state[ss.project] = project
-    st.session_state[ss.selected_chapter_num] = new_chapter_num
-    logger.info(f"Added new chapter {new_chapter_num}")
+    logger.info(f"Set chapter {chapter_num} {page_type} page to {page_num}")
+    st.rerun()
 
 
-def remove_chapter(chapter_num: int, project, selected_chapter_num):
-    project.remove_chapter(chapter_num)
-    st.session_state[ss.project] = project
+def manage_chapters(action: str, project: ProjectViewModel, **kwargs):
+    if action == "select":
+        chapter_num = kwargs["chapter_num"]
+        st.session_state[ss.selected_chapter_num] = chapter_num
+        logger.info(f"Selected chapter {chapter_num}")
 
-    # If removed chapter was selected, select another one
-    if selected_chapter_num == chapter_num:
+    elif action == "add":
         if project.chapters:
-            st.session_state[ss.selected_chapter_num] = min(project.chapters.keys())
+            new_chapter_num = max(project.chapters.keys()) + 1
+            project.add_chapter(new_chapter_num)
         else:
-            st.session_state[ss.selected_chapter_num] = None
+            new_chapter_num = 1
+            project.add_chapter(new_chapter_num)
+        st.session_state[ss.project] = project
+        st.session_state[ss.selected_chapter_num] = new_chapter_num
+        logger.info(f"Added new chapter {new_chapter_num}")
 
-    logger.info(f"Removed chapter {chapter_num}")
+    elif action == "remove":
+        chapter_num = kwargs["chapter_num"]
+        selected_chapter_num = kwargs["selected_chapter_num"]
+        project.remove_chapter(chapter_num)
+        st.session_state[ss.project] = project
+        # If removed chapter was selected, select another one
+        if selected_chapter_num == chapter_num:
+            if project.chapters:
+                st.session_state[ss.selected_chapter_num] = min(project.chapters.keys())
+            else:
+                st.session_state[ss.selected_chapter_num] = None
+        logger.info(f"Removed chapter {chapter_num}")
 
-
-def set_chapter_start_page(chapter_num: int, page_num: int, project):
-    project.set_chapter_start_page(chapter_num, page_num)
-    st.session_state[ss.project] = project
-    logger.info(f"Set chapter {chapter_num} start page to {page_num}")
-
-
-def set_chapter_end_page(chapter_num: int, page_num: int, project):
-    project.set_chapter_end_page(chapter_num, page_num)
-    st.session_state[ss.project] = project
-    logger.info(f"Set chapter {chapter_num} end page to {page_num}")
-
-
-def increment_page(current_page: int, max_page_number: int):
-    if current_page < max_page_number:
-        st.session_state[ss.current_page] = current_page + 1
-
-
-def decrement_page(current_page: int):
-    if current_page > 1:
-        st.session_state[ss.current_page] = current_page - 1
+    return project
 
 
-def display_page_content(image_files: list[str], current_page: int):
+def render_page_viewer(image_files: list[str], current_page: int, max_pages: int):
     with st.container(width=400, height=600):
         st.image(image_files[current_page - 1])
 
-
-def display_navigation_controls(current_page: int, max_page_number: int):
     with st.container():
         left, center, right = st.columns(3)
-
         with left:
-            st.button(label="前のページ", on_click=decrement_page, args=(current_page,), use_container_width=True)
-
+            st.button("前のページ", on_click=navigate_page, args=(-1, current_page, max_pages), **BUTTON_STYLE)
         with center:
-            st.write(f"ページ {current_page}/{max_page_number}")
-
+            st.write(f"ページ {current_page}/{max_pages}")
         with right:
-            st.button(
-                label="次のページ",
-                on_click=increment_page,
-                args=(current_page, max_page_number),
-                use_container_width=True,
-            )
+            st.button("次のページ", on_click=navigate_page, args=(1, current_page, max_pages), **BUTTON_STYLE)
 
 
-def display_chapter_management_sidebar(project: ProjectViewModel, selected_chapter_num: int):
+def render_single_chapter(project: ProjectViewModel, chapter_num: int, selected_chapter_num: int):
+    is_selected = chapter_num == selected_chapter_num
+    chapter_info = project.get_chapter_info(chapter_num)
+
+    with st.container(border=True):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            button_type = "primary" if is_selected else "secondary"
+            if st.button(f"第{chapter_num}章", key=f"select_{chapter_num}", type=button_type, **BUTTON_STYLE):
+                manage_chapters("select", project, chapter_num=chapter_num)
+                st.rerun()
+        with col2:
+            if st.button("削除", key=f"remove_{chapter_num}", **BUTTON_STYLE):
+                manage_chapters("remove", project, chapter_num=chapter_num, selected_chapter_num=selected_chapter_num)
+                st.rerun()
+
+        render_chapter_info(chapter_info, is_compact=True)
+
+
+def render_chapter_sidebar(project: ProjectViewModel, selected_chapter_num: int):
     with st.sidebar:
         st.header("章管理")
 
-        # Add new chapter button
-        st.button("新しい章を追加", on_click=add_new_chapter, args=(project,), use_container_width=True)
+        if st.button("新しい章を追加", **BUTTON_STYLE):
+            manage_chapters("add", project)
+            st.rerun()
 
         st.divider()
 
-        # Display existing project
-        if project:
-            st.subheader("章一覧")
-            for chapter_num in sorted(project.chapters.keys()):
-                chapter_info = project.get_chapter_info(chapter_num)
+        if not project.chapters:
+            st.info("章を追加してください")
+            return
 
-                # Chapter selection and info
-                is_selected = chapter_num == selected_chapter_num
-
-                with st.container(border=True):
-                    col1, col2 = st.columns([3, 1])
-
-                    with col1:
-                        if st.button(
-                            f"第{chapter_num}章",
-                            key=f"select_chapter_{chapter_num}",
-                            type="primary" if is_selected else "secondary",
-                            use_container_width=True,
-                        ):
-                            select_chapter(chapter_num)
-                            st.rerun()
-
-                    with col2:
-                        st.button(
-                            "削除",
-                            key=f"remove_chapter_{chapter_num}",
-                            on_click=remove_chapter,
-                            args=(chapter_num, project, selected_chapter_num),
-                            use_container_width=True,
-                        )
-
-                    # Display chapter info
-                    start_text = (
-                        f"開始: P{chapter_info.start_page_number}"
-                        if chapter_info.start_page_number > 0
-                        else "開始: 未設定"
-                    )
-                    end_text = (
-                        f"終了: P{chapter_info.end_page_number}" if chapter_info.end_page_number > 0 else "終了: 未設定"
-                    )
-                    st.caption(f"{start_text}")
-                    st.caption(f"{end_text}")
-        else:
-            st.info("章が設定されていません。\n'新しい章を追加'ボタンで章を追加してください。")
+        st.subheader("章一覧")
+        for chapter_num in sorted(project.chapters.keys()):
+            render_single_chapter(project, chapter_num, selected_chapter_num)
 
 
-def display_chapter_controls(selected_chapter_num: int, current_page: int, project: ProjectViewModel):
+def render_chapter_controls(selected_chapter_num: int, current_page: int, project: ProjectViewModel):
     if selected_chapter_num is None:
         st.info("章を選択してください")
         return
@@ -168,59 +152,30 @@ def display_chapter_controls(selected_chapter_num: int, current_page: int, proje
     st.subheader(f"第{selected_chapter_num}章の設定")
 
     chapter_info = project.get_chapter_info(selected_chapter_num)
-
-    # Display current chapter info
-    col1, col2 = st.columns(2)
-    with col1:
-        start_text = (
-            f"開始ページ: P{chapter_info.start_page_number}"
-            if chapter_info.start_page_number > 0
-            else "開始ページ: 未設定"
-        )
-        st.info(start_text)
-    with col2:
-        end_text = (
-            f"終了ページ: P{chapter_info.end_page_number}" if chapter_info.end_page_number > 0 else "終了ページ: 未設定"
-        )
-        st.info(end_text)
+    render_chapter_info(chapter_info, is_compact=False)
 
     st.divider()
 
-    # Chapter setting buttons
     col1, col2 = st.columns(2)
     with col1:
-        if st.button(
-            f"この章の開始ページに設定 (P{current_page})",
-            on_click=set_chapter_start_page,
-            args=(selected_chapter_num, current_page, project),
-            use_container_width=True,
-            type="primary",
-        ):
-            st.success(f"第{selected_chapter_num}章の開始ページをP{current_page}に設定しました")
+        if st.button(f"開始ページに設定 (P{current_page})", type="primary", **BUTTON_STYLE):
+            set_chapter_page(selected_chapter_num, current_page, "start", project)
+            st.success(f"開始ページをP{current_page}に設定")
 
     with col2:
-        if st.button(
-            f"この章の終了ページに設定 (P{current_page})",
-            on_click=set_chapter_end_page,
-            args=(selected_chapter_num, current_page, project),
-            use_container_width=True,
-            type="secondary",
-        ):
-            st.success(f"第{selected_chapter_num}章の終了ページをP{current_page}に設定しました")
+        if st.button(f"終了ページに設定 (P{current_page})", type="secondary", **BUTTON_STYLE):
+            set_chapter_page(selected_chapter_num, current_page, "end", project)
+            st.success(f"終了ページをP{current_page}に設定")
 
 
-def validate_and_proceed(project):
+def render_validation_section(project: ProjectViewModel):
     st.divider()
 
-    # Show summary
     with st.expander("章設定の確認", expanded=False):
-        if project:
-            summary = project.get_chapter_summary()
-        else:
-            summary = ""
+        summary = project.get_chapter_summary()
         st.write(summary)
 
-    if st.button("設定完了", type="primary", use_container_width=True):
+    if st.button("設定完了", type="primary", **BUTTON_STYLE):
         try:
             project.validate_chapter_config()
             logger.info("Chapter configuration validated successfully")
@@ -233,33 +188,26 @@ def main():
     st.title("章設定")
     st.write("本のページを見ながら、各章の開始ページと終了ページを設定してください。")
 
-    # Initialize session and get current state
-    image_files, max_page_number, current_page, project, selected_chapter_num = initialize_session()
+    # Get current state
+    state = get_current_state()
 
     # Initialize selected chapter if not set
-    if selected_chapter_num is None and project.chapters:
-        selected_chapter_num = min(project.chapters.keys())
-        st.session_state[ss.selected_chapter_num] = selected_chapter_num
+    if state["selected_chapter"] is None and state["project"].chapters:
+        st.session_state[ss.selected_chapter_num] = min(state["project"].chapters.keys())
+        state["selected_chapter"] = min(state["project"].chapters.keys())
 
-    # Display chapter management sidebar
-    display_chapter_management_sidebar(project, selected_chapter_num)
+    # Display sidebar
+    render_chapter_sidebar(state["project"], state["selected_chapter"])
 
     # Main content area
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Display page content (image)
-        display_page_content(image_files, current_page)
-
-        # Display navigation controls
-        display_navigation_controls(current_page, max_page_number)
+        render_page_viewer(state["image_files"], state["current_page"], state["max_pages"])
 
     with col2:
-        # Display chapter controls
-        display_chapter_controls(selected_chapter_num, current_page, project)
-
-        # Validate and proceed
-        validate_and_proceed(project)
+        render_chapter_controls(state["selected_chapter"], state["current_page"], state["project"])
+        render_validation_section(state["project"])
 
 
 # Execute main function directly for Streamlit
