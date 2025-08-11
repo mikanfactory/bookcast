@@ -44,5 +44,7 @@ testpaths = ["tests/"]
 [dependency-groups]
 dev = [
     "ipython>=9.4.0",
+    "pytest>=8.4.1",
+    "ruff>=0.12.8",
     "watchdog>=6.0.0",
 ]

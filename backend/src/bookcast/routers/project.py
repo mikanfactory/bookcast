@@ -1,5 +1,5 @@
 from logging import getLogger
-
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from bookcast.dependencies import get_project_service
@@ -35,6 +35,7 @@ async def upload_file(file: UploadFile, project_service: ProjectService = Depend
         results = project_service.create_project(file.filename, file.file)
     except Exception as e:
         logger.error(f"Error creating project from file {file.filename}: {e}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Failed to create project from file")
 
     logger.info(f"Project created with ID: {results.id} for file: {file.filename}")
