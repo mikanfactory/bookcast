@@ -38,6 +38,16 @@ class TestChapterRepository:
         assert created_chapter.updated_at is not None
 
     @pytest.mark.integration
+    def test_bulk_create(self, chapter_repository, starting_project):
+        p, _ = starting_project
+        chapters = [Chapter(project_id=p.id, chapter_number=2, start_page=1, end_page=10)]
+        created_chapter = chapter_repository.bulk_create(chapters)
+
+        assert created_chapter[0].id is not None
+        assert created_chapter[0].created_at is not None
+        assert created_chapter[0].updated_at is not None
+
+    @pytest.mark.integration
     def test_update(self, chapter_repository, starting_project):
         _, cs = starting_project
         chapter = chapter_repository.find(cs[0].id)

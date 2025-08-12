@@ -21,6 +21,11 @@ def chapter_service_mock():
         Chapter(id=2, project_id=1, chapter_number=2, start_page=6, end_page=10, status=ChapterStatus.ocr_completed),
     ]
 
+    chapter_service.chapter_repo.bulk_create.return_value = [
+        Chapter(id=3, project_id=1, chapter_number=1, start_page=1, end_page=5, status=ChapterStatus.not_started),
+        Chapter(id=4, project_id=1, chapter_number=2, start_page=6, end_page=10, status=ChapterStatus.not_started),
+    ]
+
     return chapter_service
 
 
@@ -136,14 +141,11 @@ class TestUpdateChapterScriptFileCount:
 
 
 class TestCreateChapters:
-    @pytest.mark.skip("Skipping test_create_chapters as it is not implemented yet")
     def test_create_chapters(self, chapter_service_mock):
-        project_id = 1
         chapters = [
             Chapter(project_id=1, chapter_number=1, start_page=1, end_page=5),
             Chapter(project_id=1, chapter_number=2, start_page=6, end_page=10),
         ]
 
-        result = chapter_service_mock.create_chapters(project_id, chapters)
-
-        assert result is None
+        result = chapter_service_mock.create_chapters(chapters)
+        assert result is not None

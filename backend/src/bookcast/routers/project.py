@@ -1,5 +1,6 @@
-from logging import getLogger
 import traceback
+from logging import getLogger
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from bookcast.dependencies import get_project_service

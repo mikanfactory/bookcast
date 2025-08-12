@@ -10,9 +10,9 @@ class ChapterService:
     def select_chapter_by_project_id(self, project_id: int) -> list[Chapter]:
         return self.chapter_repo.select_chapter_by_project_id(project_id)
 
-    # TODO
-    def create_chapters(self, project_id: int, chapters: list[Chapter]):
-        pass
+    def create_chapters(self, chapters: list[Chapter]):
+        self.chapter_repo.bulk_create(chapters)
+        return chapters
 
     def update_chapters_status(self, chapters: list[Chapter], status: ChapterStatus) -> list[Chapter]:
         for chapter in chapters:

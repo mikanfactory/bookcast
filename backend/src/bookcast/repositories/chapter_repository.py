@@ -24,6 +24,14 @@ class ChapterRepository:
             return Chapter(**response.data[0])
         return None
 
+    def bulk_create(self, chapters: list[Chapter]) -> list[Chapter]:
+        exclude_fields = {"id", "extracted_text", "created_at", "updated_at"}
+        data = [chapter.model_dump(exclude=exclude_fields) for chapter in chapters]
+        response = self.db.table("chapter").insert(data).execute()
+        if len(response.data):
+            return [Chapter(**item) for item in response.data]
+        return []
+
     def update(self, chapter: Chapter) -> Chapter | None:
         exclude_fields = {"id", "created_at", "updated_at"}
         response = (

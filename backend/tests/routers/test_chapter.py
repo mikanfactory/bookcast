@@ -53,9 +53,15 @@ def client_with_mock():
 
 
 class TestCreateChapters:
-    @pytest.mark.skip("Skipping test_create_chapters as it is not implemented yet")
     def test_create_chapters(self, client_with_mock):
         client, chapter_service = client_with_mock
+        json_value = {
+            "project_id": 1,
+            "chapters": [
+                {"chapter_number": 1, "start_page": 1, "end_page": 10},
+                {"chapter_number": 2, "start_page": 11, "end_page": 20},
+            ],
+        }
 
-        response = client.post("/api/v1/chapters/create_chapters", data={})
+        response = client.post("/api/v1/chapters/create_chapters", json=json_value)
         assert response.status_code == 200
