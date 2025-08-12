@@ -9,6 +9,7 @@ from bookcast.config import BACKEND_URL
 from bookcast.page import Rooter
 from bookcast.services.image_file import ImageFileService
 from bookcast.session_state import SessionState as ss
+from bookcast.view_models import ProjectViewModel
 
 logger = get_logger(__name__)
 
@@ -44,7 +45,7 @@ def process_uploaded_file(uploaded_file: io.BytesIO):
     if resp.ok:
         with st.spinner("Redirecting to project page..."):
             result = resp.json()
-            st.session_state[ss.project_id] = result["id"]
+            st.session_state[ss.project] = ProjectViewModel(project_id=result["id"])
             image_dir = ImageFileService.convert_pdf_to_images(uploaded_file)
             st.session_state[ss.image_dir] = image_dir
 
