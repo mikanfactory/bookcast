@@ -7,4 +7,4 @@ app = FastAPI()
 
 app.include_router(project.router)
 app.include_router(chapter.router)
-app.include_router(worker.router, prefix="/internal")
+app.include_router(worker.router)

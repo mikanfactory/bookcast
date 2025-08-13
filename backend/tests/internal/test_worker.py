@@ -70,8 +70,9 @@ def client_with_mock():
 
 
 class TestStartOCR:
+    @patch("bookcast.internal.worker._invoke")
     @patch("bookcast.internal.worker.ocr_service")
-    def test_start_ocr_success(self, ocr_service, client_with_mock):
+    def test_start_ocr_success(self, ocr_service, _invoke, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         ocr_service.process.return_value = [
@@ -80,7 +81,7 @@ class TestStartOCR:
             OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
         ]
 
-        response = client.post("/internal/api/v1/workers/start_ocr/1")
+        response = client.post("/internal/api/v1/workers/start_ocr", json={"project_id": 1})
 
         assert response.status_code == 200
         assert response.json() == {"status": 200}
@@ -93,8 +94,9 @@ class TestStartOCR:
 
 
 class TestStartScriptWriting:
+    @patch("bookcast.internal.worker._invoke")
     @patch("bookcast.internal.worker.script_writing_service")
-    def test_start_script_writing_success(self, script_service, client_with_mock):
+    def test_start_script_writing_success(self, script_service, _invoke, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.ocr_completed
@@ -104,7 +106,7 @@ class TestStartScriptWriting:
             ScriptWritingWorkerResult(chapter_id=2, script="Generated script for chapter 2"),
         ]
 
-        response = client.post("/internal/api/v1/workers/start_script_writing/1")
+        response = client.post("/internal/api/v1/workers/start_script_writing", json={"project_id": 1})
 
         assert response.status_code == 200
         assert response.json() == {"status": 200}
@@ -117,8 +119,9 @@ class TestStartScriptWriting:
 
 
 class TestStartTTS:
+    @patch("bookcast.internal.worker._invoke")
     @patch("bookcast.internal.worker.tts_service")
-    def test_start_tts_success(self, tts_service, client_with_mock):
+    def test_start_tts_success(self, tts_service, _invoke, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.writing_script_completed
@@ -128,7 +131,7 @@ class TestStartTTS:
             TTSWorkerResult(chapter_id=2, index=2),
         ]
 
-        response = client.post("/internal/api/v1/workers/start_tts/1")
+        response = client.post("/internal/api/v1/workers/start_tts", json={"project_id": 1})
 
         assert response.status_code == 200
         assert response.json() == {"status": 200}
@@ -141,14 +144,15 @@ class TestStartTTS:
 
 
 class TestStartCreatingAudio:
+    @patch("bookcast.internal.worker._invoke")
     @patch("bookcast.internal.worker.audio_service")
     @patch("bookcast.internal.worker.TTSFileService")
-    def test_start_creating_audio_success(self, file_service, audio_service, client_with_mock):
+    def test_start_creating_audio_success(self, file_service, audio_service, _invoke, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.tts_completed
 
-        response = client.post("/internal/api/v1/workers/start_creating_audio/1")
+        response = client.post("/internal/api/v1/workers/start_creating_audio", json={"project_id": 1})
 
         assert response.status_code == 200
         assert response.json() == {"status": 200}

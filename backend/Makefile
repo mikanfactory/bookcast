@@ -31,11 +31,11 @@ IMAGE := $(GOOGLE_CLOUD_LOCATION)-docker.pkg.dev/$(GOOGLE_CLOUD_PROJECT)/bookcas
 .PHONY: deploy/server
 deploy/server:
 	docker build --platform=linux/amd64 -t bookcast-server . && \
-	docker tag $(IMAGE) && \
+	docker tag bookcast-server $(IMAGE) && \
 	docker push $(IMAGE) && \
 	gcloud run deploy bookcast-server \
 		--image=$(IMAGE):latest \
 		--set-env-vars=ENV=production \
 		--region=$(GOOGLE_CLOUD_LOCATION) \
 		--project=$(GOOGLE_CLOUD_PROJECT) && \
-	gcloud run services update-traffic bookcast-server --to-latest
+	gcloud run services --region $(GOOGLE_CLOUD_LOCATION) update-traffic bookcast-server --to-latest
