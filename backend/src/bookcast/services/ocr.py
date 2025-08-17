@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import io
+import pathlib
 from logging import getLogger
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, OCRWorkerResult, Project
-from bookcast.path_resolver import build_downloads_path
+from bookcast.services.file import OCRImageFileService
 
 logger = getLogger(__name__)
 
@@ -187,9 +188,10 @@ class OCRService:
 
         return OCRWorkerResult(chapter_id=chapter.id, page_number=page_number, extracted_text=extracted_text)
 
-    async def _extract_text_from_pdf(self, project: Project, chapters: list[Chapter]) -> list[OCRWorkerResult]:
-        pdf_path = build_downloads_path(project.filename)
-        images = convert_from_path(pdf_path)
+    async def _extract_text_from_pdf(
+        self, project: Project, chapters: list[Chapter], book_path: pathlib.Path
+    ) -> list[OCRWorkerResult]:
+        images = convert_from_path(book_path)
         tasks = []
         for chapter in chapters:
             ts = [
@@ -202,8 +204,11 @@ class OCRService:
         results = await asyncio.gather(*tasks)
         return results
 
-    def process(self, project: Project, chapters: list[Chapter]) -> list[OCRWorkerResult]:
+    async def process(self, project: Project, chapters: list[Chapter]) -> list[OCRWorkerResult]:
         logger.info(f"Starting OCR: {project.filename}")
-        results = asyncio.run(self._extract_text_from_pdf(project, chapters))
+
+        book_path = OCRImageFileService.download_from_gcs(project.filename)
+        results = self._extract_text_from_pdf(project, chapters, book_path)
+
         logger.info(f"Completed OCR: {project.filename}")
-        return results
+        return await results

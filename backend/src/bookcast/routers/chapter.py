@@ -4,8 +4,10 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from bookcast.config import BOOKCAST_WORKER_QUEUE
 from bookcast.dependencies import get_chapter_service
 from bookcast.entities.chapter import Chapter
+from bookcast.internal.worker import invoke_task
 from bookcast.services.chapter import ChapterService
 
 logger = logging.getLogger(__name__)
@@ -52,3 +54,10 @@ async def create_chapters(
         logger.error(f"Error creating chapters for project {project.project_id}: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Failed to create chapters for project")
+
+    try:
+        logger.info("Invoking OCR worker for project %s", project.project_id)
+        invoke_task(project.project_id, "start_ocr", BOOKCAST_WORKER_QUEUE)
+    except Exception as e:
+        logger.error(traceback.print_exc())
+        raise HTTPException(500, detail=f"Failed to invoke worker: {str(e)}")

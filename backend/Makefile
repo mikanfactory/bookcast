@@ -37,5 +37,7 @@ deploy/server:
 		--image=$(IMAGE):latest \
 		--set-env-vars=ENV=production \
 		--region=$(GOOGLE_CLOUD_LOCATION) \
+		--cpu=4 \
+		--memory=8Gi \
 		--project=$(GOOGLE_CLOUD_PROJECT) && \
 	gcloud run services --region $(GOOGLE_CLOUD_LOCATION) update-traffic bookcast-server --to-latest

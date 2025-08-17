@@ -36,6 +36,15 @@ class OCRImageFileService(GCSFileUploadable):
 
         return book_path
 
+    @classmethod
+    def download_from_gcs(cls, filename: str) -> pathlib.Path:
+        book_dir = build_book_directory(filename)
+        book_dir.mkdir(parents=True, exist_ok=True)
+
+        book_path = resolve_book_path(filename)
+        cls._download_from_gcs(book_path)
+        return book_path
+
 
 class OCRTextFileService(GCSFileUploadable):
     @classmethod

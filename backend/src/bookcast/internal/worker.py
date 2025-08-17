@@ -42,7 +42,7 @@ class FormData(BaseModel):
     project_id: int
 
 
-def _invoke(project_id: int, fn_name: str, queue: str) -> Optional[dict]:
+def invoke_task(project_id: int, fn_name: str, queue: str) -> Optional[dict]:
     client = tasks_v2.CloudTasksClient()
     parent = client.queue_path(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION, queue=queue)
     task_payload = {"project_id": project_id}
@@ -68,14 +68,14 @@ async def start_ocr(
 
     project = project_service.find_project(data.project_id)
     chapters = chapter_service.select_chapter_by_project_id(data.project_id)
-    if project.status != ProjectStatus.not_started:
-        return {"status": 400}
+    # if project.status != ProjectStatus.not_started:
+    #     return {"status": 400}
 
     logger.info(f"Updating project status to start OCR for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_ocr)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_ocr)
 
-    results = ocr_service.process(project, chapters)
+    results = await ocr_service.process(project, chapters)
 
     logger.info(f"Updating project status to OCR completed for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.ocr_completed)
@@ -83,7 +83,7 @@ async def start_ocr(
 
     try:
         logger.info("Invoking script writing worker...")
-        _invoke(data.project_id, "start_script_writing", BOOKCAST_WORKER_QUEUE)
+        invoke_task(data.project_id, "start_script_writing", BOOKCAST_WORKER_QUEUE)
     except Exception as e:
         logger.error(traceback.print_exc())
         raise HTTPException(500, detail=f"Failed to invoke worker: {str(e)}")
@@ -116,7 +116,7 @@ async def start_script_writing(
 
     try:
         logger.info("Invoking TTS worker...")
-        _invoke(data.project_id, "start_tts", BOOKCAST_TTS_WORKER_QUEUE)
+        invoke_task(data.project_id, "start_tts", BOOKCAST_TTS_WORKER_QUEUE)
     except Exception as e:
         logger.error(traceback.print_exc())
         raise HTTPException(500, detail=f"Failed to invoke worker: {str(e)}")
@@ -145,7 +145,7 @@ async def start_tts(
 
     try:
         logger.info("Invoking audio creation worker...")
-        _invoke(data.project_id, "start_creating_audio", BOOKCAST_WORKER_QUEUE)
+        invoke_task(data.project_id, "start_creating_audio", BOOKCAST_WORKER_QUEUE)
     except Exception as e:
         logger.error(traceback.print_exc())
         raise HTTPException(500, detail=f"Failed to invoke worker: {str(e)}")
