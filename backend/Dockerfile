@@ -12,6 +12,7 @@ FROM python:3.12-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
+    poppler-data \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean

@@ -46,9 +46,12 @@ class AudioService:
 
     @staticmethod
     def _coordinate_script(project: Project, chapter: Chapter) -> AudioSegment:
-        script_audios = [
-            TTSFileService.read(project.filename, chapter.chapter_number, i) for i in range(chapter.script_file_count)
-        ]
+        script_audios = []
+        for i in range(chapter.script_file_count):
+            TTSFileService.download_from_gcs(project.filename, chapter.id, i)
+            audio = TTSFileService.read(project.filename, chapter.chapter_number, i)
+            script_audios.append(audio)
+
         acc = AudioSegment.empty()
         for script_audio in script_audios:
             script_audio = normalize(script_audio)
@@ -65,6 +68,13 @@ class AudioService:
 
     def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info("Generating audio for chapters")
+
+        logger.info("Downloading TTS files from GCS")
+        for chapter in chapters:
+            for i in range(chapter.script_file_count):
+                TTSFileService.download_from_gcs(project.filename, chapter.id, i)
+
+        logger.info("Starting audio generation")
         jingle_audio = self._coordinate_jingle()
 
         for chapter in chapters:

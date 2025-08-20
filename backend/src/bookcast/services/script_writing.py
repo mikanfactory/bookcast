@@ -230,8 +230,8 @@ class ScriptWritingService:
         tasks = [self._generate_script(chapter) for chapter in chapters]
         return await asyncio.gather(*tasks)
 
-    def process(self, project: Project, chapters: list[Chapter]) -> list[ScriptWritingWorkerResult]:
+    async def process(self, project: Project, chapters: list[Chapter]) -> list[ScriptWritingWorkerResult]:
         logger.info("Start writing script.")
-        results = asyncio.run(self._generate_scripts(chapters))
+        results = await self._generate_scripts(chapters)
         logger.info("End writing script.")
         return results

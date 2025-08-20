@@ -208,7 +208,7 @@ class OCRService:
         logger.info(f"Starting OCR: {project.filename}")
 
         book_path = OCRImageFileService.download_from_gcs(project.filename)
-        results = self._extract_text_from_pdf(project, chapters, book_path)
+        results = await self._extract_text_from_pdf(project, chapters, book_path)
 
         logger.info(f"Completed OCR: {project.filename}")
-        return await results
+        return results

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import traceback
@@ -52,7 +53,8 @@ def invoke_task(project_id: int, fn_name: str, queue: str) -> Optional[dict]:
             "url": f"{CLOUD_RUN_SERVICE_URL}/internal/api/v1/workers/{fn_name}",
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(task_payload).encode(),
-        }
+        },
+        "dispatch_deadline": {"seconds": 60 * 60},  # 60 minutes
     }
     response = client.create_task(request={"parent": parent, "task": task})
     return {"task_name": response.name, "status": "queued"}
@@ -101,14 +103,14 @@ async def start_script_writing(
 
     project = project_service.find_project(data.project_id)
     chapters = chapter_service.select_chapter_by_project_id(data.project_id)
-    if project.status != ProjectStatus.ocr_completed:
-        return {"status": 400}
+    # if project.status != ProjectStatus.ocr_completed:
+    #     return {"status": 400}
 
     logger.info(f"Updating project status to start writing script for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_writing_script)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_writing_script)
 
-    results = script_writing_service.process(project, chapters)
+    results = await script_writing_service.process(project, chapters)
 
     logger.info(f"Updating project status to script writing completed for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.writing_script_completed)
@@ -132,14 +134,16 @@ async def start_tts(
 ):
     project = project_service.find_project(data.project_id)
     chapters = chapter_service.select_chapter_by_project_id(data.project_id)
-    if project.status != ProjectStatus.writing_script_completed:
-        return {"status": 400}
+    # if project.status != ProjectStatus.writing_script_completed:
+    #     return {"status": 400}
 
     project_service.update_project_status(project, ProjectStatus.start_tts)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_tts)
 
-    results = tts_service.generate_audio(project, chapters)
-
+    results = await asyncio.wait_for(
+        tts_service.generate_audio(project, chapters),
+        timeout=60 * 60,  # 60 minutes timeout
+    )
     project_service.update_project_status(project, ProjectStatus.tts_completed)
     chapter_service.update_chapter_script_file_count(chapters, results)
 
@@ -161,15 +165,11 @@ async def start_creating_audio(
 ):
     project = project_service.find_project(data.project_id)
     chapters = chapter_service.select_chapter_by_project_id(data.project_id)
-    if project.status != ProjectStatus.tts_completed:
-        return {"status": 400}
+    # if project.status != ProjectStatus.tts_completed:
+    #     return {"status": 400}
 
     project_service.update_project_status(project, ProjectStatus.start_creating_audio)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_creating_audio)
-
-    for chapter in chapters:
-        for i in range(chapter.script_file_count):
-            TTSFileService.download_from_gcs(project.filename, chapter.id, i)
 
     audio_service.generate_audio(project, chapters)
 

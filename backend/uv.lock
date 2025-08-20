@@ -58,6 +58,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "pyyaml" },
     { name = "supabase" },
+    { name = "tenacity" },
     { name = "tiktoken" },
 ]
 
@@ -93,6 +94,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "supabase", specifier = ">=2.17.0" },
+    { name = "tenacity", specifier = ">=8.0.0" },
     { name = "tiktoken", specifier = ">=0.10.0" },
 ]
 

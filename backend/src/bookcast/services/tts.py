@@ -1,9 +1,12 @@
 import asyncio
+import logging
 from logging import getLogger
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError
 from langchain.text_splitter import CharacterTextSplitter
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, Project, TTSWorkerResult
@@ -60,6 +63,12 @@ class TextToSpeechService:
         data = response.candidates[0].content.parts[0].inline_data.data
         return data
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((ServerError,)),
+        before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
     async def _generate(self, project: Project, script: str, chapter: Chapter, index: int) -> TTSWorkerResult:
         async with self.semaphore:
             logger.info(f"Generating audio for chapter: {str(chapter)}, index: {index}")
@@ -79,11 +88,12 @@ class TextToSpeechService:
             for i, script in enumerate(chunked_scripts):
                 tasks.append(self._generate(project, script, chapter, i))
 
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        return results
 
-    def generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
+    async def generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
         logger.info("Starting audio generation for chapters.")
-        results = asyncio.run(self._generate_audio(project, chapters))
+        results = await self._generate_audio(project, chapters)
         logger.info("Audio generation completed successfully.")
 
         return results

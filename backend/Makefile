@@ -37,6 +37,7 @@ deploy/server:
 		--image=$(IMAGE):latest \
 		--set-env-vars=ENV=production \
 		--region=$(GOOGLE_CLOUD_LOCATION) \
+		--timeout=60m \
 		--cpu=4 \
 		--memory=8Gi \
 		--project=$(GOOGLE_CLOUD_PROJECT) && \
