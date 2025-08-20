@@ -1,6 +1,5 @@
 import pathlib
 import wave
-from typing import List
 
 from pydub import AudioSegment
 

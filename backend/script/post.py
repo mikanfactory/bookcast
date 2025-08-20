@@ -1,12 +1,20 @@
+import json
 import requests
 from functools import partial
+from google.cloud import tasks_v2
 
-from bookcast.config import CLOUD_RUN_SERVICE_URL
 from bookcast.services.db import supabase_client
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.chapter import ChapterService
 from bookcast.services.project import ProjectService
 
+from bookcast.config import (
+    BOOKCAST_TTS_WORKER_QUEUE,
+    BOOKCAST_WORKER_QUEUE,
+    GOOGLE_CLOUD_LOCATION,
+    GOOGLE_CLOUD_PROJECT,
+    CLOUD_RUN_SERVICE_URL
+)
 
 chapter_repository = ChapterRepository(supabase_client)
 project_repository = ProjectRepository(supabase_client)
@@ -80,6 +88,23 @@ def _invoke(fn_name, project_id):
         print(resp.text)
 
 
+def _invoke_by_cloud_task(project_id, fn_name, queue):
+    client = tasks_v2.CloudTasksClient()
+    parent = client.queue_path(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION, queue=queue)
+    task_payload = {"project_id": project_id}
+    task = {
+        "http_request": {
+            "http_method": tasks_v2.HttpMethod.POST,
+            "url": f"{CLOUD_RUN_SERVICE_URL}/internal/api/v1/workers/{fn_name}",
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(task_payload).encode(),
+        },
+        "dispatch_deadline": {"seconds": 60 * 30},  # 30 minutes
+    }
+    response = client.create_task(request={"parent": parent, "task": task})
+    return {"task_name": response.name, "status": "queued"}
+
+
 invoke_ocr = partial(_invoke, "start_ocr")
 invoke_script_writing = partial(_invoke, "start_script_writing")
 invoke_tts = partial(_invoke, "start_tts")
@@ -92,8 +117,9 @@ def main():
     # post_chapters(project_id)
     # invoke_ocr(project_id)
     # invoke_script_writing(project_id)
-    invoke_tts(project_id)
+    # invoke_tts(project_id)
     # invoke_create_audio(project_id)
+    _invoke_by_cloud_task(project_id, "start_tts", BOOKCAST_TTS_WORKER_QUEUE)
 
 
 if __name__ == "__main__":

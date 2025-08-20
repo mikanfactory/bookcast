@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 from google.genai.errors import ServerError
 from langchain.text_splitter import CharacterTextSplitter
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
+from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, Project, TTSWorkerResult
@@ -60,14 +60,16 @@ class TextToSpeechService:
                 ),
             ),
         )
+
+        # AttributeErrorが発生することがあるため、_generateメソッドで再試行する
         data = response.candidates[0].content.parts[0].inline_data.data
         return data
 
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type((ServerError,)),
-        before_sleep=before_sleep_log(logger, logging.WARNING)
+        retry=retry_if_exception_type((ServerError, AttributeError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
     )
     async def _generate(self, project: Project, script: str, chapter: Chapter, index: int) -> TTSWorkerResult:
         async with self.semaphore:

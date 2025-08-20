@@ -19,7 +19,6 @@ from bookcast.dependencies import get_chapter_service, get_project_service
 from bookcast.entities import ChapterStatus, ProjectStatus
 from bookcast.services.audio import AudioService
 from bookcast.services.chapter import ChapterService
-from bookcast.services.file import TTSFileService
 from bookcast.services.ocr import OCRService
 from bookcast.services.project import ProjectService
 from bookcast.services.script_writing import ScriptWritingService
