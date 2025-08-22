@@ -118,8 +118,8 @@ def main():
     # invoke_ocr(project_id)
     # invoke_script_writing(project_id)
     # invoke_tts(project_id)
-    # invoke_create_audio(project_id)
-    _invoke_by_cloud_task(project_id, "start_tts", BOOKCAST_TTS_WORKER_QUEUE)
+    invoke_create_audio(project_id)
+    # _invoke_by_cloud_task(project_id, "start_tts", BOOKCAST_TTS_WORKER_QUEUE)
 
 
 if __name__ == "__main__":

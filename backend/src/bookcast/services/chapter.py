@@ -55,7 +55,7 @@ class ChapterService:
         for chapter in chapters:
             for result in results:
                 if result.chapter_id == chapter.id:
-                    chapter.script_file_count = result.index
+                    chapter.script_file_count = result.index + 1
 
             chapter.status = ChapterStatus.tts_completed
             self.chapter_repo.update(chapter)
