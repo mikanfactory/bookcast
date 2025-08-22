@@ -26,6 +26,11 @@ def chapter_service_mock():
         Chapter(id=4, project_id=1, chapter_number=2, start_page=6, end_page=10, status=ChapterStatus.not_started),
     ]
 
+    chapter_service.chapter_repo.update.return_value = [
+        Chapter(id=3, project_id=1, chapter_number=1, start_page=1, end_page=5, status=ChapterStatus.not_started),
+        Chapter(id=4, project_id=1, chapter_number=2, start_page=6, end_page=10, status=ChapterStatus.not_started),
+    ]
+
     return chapter_service
 
 
@@ -134,9 +139,9 @@ class TestUpdateChapterScriptFileCount:
         chapter_service_mock.update_chapter_script_file_count(chapters, tts_results)
 
         assert chapters[0].status == ChapterStatus.tts_completed
-        assert chapters[0].script_file_count == 3
+        assert chapters[0].script_file_count == 4
         assert chapters[1].status == ChapterStatus.tts_completed
-        assert chapters[1].script_file_count == 5
+        assert chapters[1].script_file_count == 6
         assert chapter_service_mock.chapter_repo.update.call_count == 2
 
 

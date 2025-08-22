@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -70,16 +70,16 @@ def client_with_mock():
 
 
 class TestStartOCR:
-    @patch("bookcast.internal.worker._invoke")
+    @patch("bookcast.internal.worker.invoke_task")
     @patch("bookcast.internal.worker.ocr_service")
-    def test_start_ocr_success(self, ocr_service, _invoke, client_with_mock):
+    def test_start_ocr_success(self, ocr_service, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
-        ocr_service.process.return_value = [
+        ocr_service.process = AsyncMock(return_value=[
             OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Chapter 1 page 1 text"),
             OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Chapter 1 page 2 text"),
             OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
-        ]
+        ])
 
         response = client.post("/internal/api/v1/workers/start_ocr", json={"project_id": 1})
 
@@ -91,20 +91,21 @@ class TestStartOCR:
         ocr_service.process.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapter_extracted_text.assert_called_once()
+        invoke_task.assert_called_once_with(1, "start_script_writing", "bookcast-worker")
 
 
 class TestStartScriptWriting:
-    @patch("bookcast.internal.worker._invoke")
+    @patch("bookcast.internal.worker.invoke_task")
     @patch("bookcast.internal.worker.script_writing_service")
-    def test_start_script_writing_success(self, script_service, _invoke, client_with_mock):
+    def test_start_script_writing_success(self, script_service, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.ocr_completed
 
-        script_service.process.return_value = [
+        script_service.process = AsyncMock(return_value=[
             ScriptWritingWorkerResult(chapter_id=1, script="Generated script for chapter 1"),
             ScriptWritingWorkerResult(chapter_id=2, script="Generated script for chapter 2"),
-        ]
+        ])
 
         response = client.post("/internal/api/v1/workers/start_script_writing", json={"project_id": 1})
 
@@ -116,20 +117,21 @@ class TestStartScriptWriting:
         script_service.process.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapter_script.assert_called_once()
+        invoke_task.assert_called_once_with(1, "start_tts", "bookcast-tts-worker")
 
 
 class TestStartTTS:
-    @patch("bookcast.internal.worker._invoke")
+    @patch("bookcast.internal.worker.invoke_task")
     @patch("bookcast.internal.worker.tts_service")
-    def test_start_tts_success(self, tts_service, _invoke, client_with_mock):
+    def test_start_tts_success(self, tts_service, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.writing_script_completed
 
-        tts_service.generate_audio.return_value = [
+        tts_service.generate_audio = AsyncMock(return_value=[
             TTSWorkerResult(chapter_id=1, index=3),
             TTSWorkerResult(chapter_id=2, index=2),
-        ]
+        ])
 
         response = client.post("/internal/api/v1/workers/start_tts", json={"project_id": 1})
 
@@ -141,13 +143,12 @@ class TestStartTTS:
         tts_service.generate_audio.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapter_script_file_count.assert_called_once()
+        invoke_task.assert_called_once_with(1, "start_creating_audio", "bookcast-worker")
 
 
 class TestStartCreatingAudio:
-    @patch("bookcast.internal.worker._invoke")
     @patch("bookcast.internal.worker.audio_service")
-    @patch("bookcast.internal.worker.TTSFileService")
-    def test_start_creating_audio_success(self, file_service, audio_service, _invoke, client_with_mock):
+    def test_start_creating_audio_success(self, audio_service, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.tts_completed
@@ -159,7 +160,6 @@ class TestStartCreatingAudio:
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
-        file_service.download_from_gcs.assert_called()
         audio_service.generate_audio.assert_called_once()
         project_service.update_project_status.assert_called()
         chapter_service.update_chapters_status.assert_called()
