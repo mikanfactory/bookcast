@@ -64,3 +64,4 @@ markers = [
     "integration: mark a test as an integration test",
 ]
 testpaths = ["tests/"]
+asyncio_mode = "auto"

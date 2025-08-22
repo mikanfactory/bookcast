@@ -42,7 +42,7 @@ def test_podcast_orchestrator(llm):
 class TestScriptWritingServiceIntegration:
     @pytest.mark.integration
     @patch("bookcast.services.script_writing.PodcastOrchestrator")
-    def test_process(self, mock_orchestrator_class):
+    async def test_process(self, mock_orchestrator_class):
         project = Project(
             id=1, filename="test_sample.pdf", max_page_number=3, status=ProjectStatus.start_writing_script
         )
@@ -65,7 +65,7 @@ class TestScriptWritingServiceIntegration:
         )
 
         script_writing_service = ScriptWritingService()
-        results = script_writing_service.process(project, chapters)
+        results = await script_writing_service.process(project, chapters)
 
         assert isinstance(results, list)
         assert len(results) == 1

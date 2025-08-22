@@ -9,7 +9,7 @@ from bookcast.services.tts import TextToSpeechService
 class TestTextToSpeechServiceIntegration:
     @pytest.mark.integration
     @patch("bookcast.services.tts.TTSFileService")
-    def test_generate_audio(self, mock_tts_file_service):
+    async def test_generate_audio(self, mock_tts_file_service):
         project = Project(id=1, filename="test_sample.pdf", max_page_number=3, status=ProjectStatus.start_tts)
         chapters = [
             Chapter(
@@ -31,7 +31,7 @@ class TestTextToSpeechServiceIntegration:
         tts_service = TextToSpeechService()
 
         with patch.object(tts_service, "_invoke", return_value=b"fake_audio_data"):
-            results = tts_service.generate_audio(project, chapters)
+            results = await tts_service.generate_audio(project, chapters)
 
         assert isinstance(results, list)
         assert isinstance(results[0], TTSWorkerResult)

@@ -35,7 +35,7 @@ def test_ocr_orchestrator(llm):
 class TestOCRServiceIntegration:
     @pytest.mark.integration
     @patch("bookcast.services.ocr.OCROrchestrator")
-    def test_process(self, mock_orchestrator_class):
+    async def test_process(self, mock_orchestrator_class):
         project = Project(id=1, filename="test_sample.pdf", max_page_number=3, status=ProjectStatus.start_ocr)
         chapters = [
             Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=3, status=ChapterStatus.start_ocr)
@@ -48,8 +48,8 @@ class TestOCRServiceIntegration:
         ocr_service = OCRService()
 
         test_file_path = pathlib.Path("tests/resources/test_sample.pdf")
-        with patch("bookcast.services.ocr.build_downloads_path", return_value=test_file_path):
-            results = ocr_service.process(project, chapters)
+        with patch("bookcast.services.ocr.OCRImageFileService.download_from_gcs", return_value=test_file_path):
+            results = await ocr_service.process(project, chapters)
 
         assert isinstance(results, list)
         assert len(results) > 0

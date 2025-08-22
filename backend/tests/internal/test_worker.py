@@ -75,11 +75,13 @@ class TestStartOCR:
     def test_start_ocr_success(self, ocr_service, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
-        ocr_service.process = AsyncMock(return_value=[
-            OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Chapter 1 page 1 text"),
-            OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Chapter 1 page 2 text"),
-            OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
-        ])
+        ocr_service.process = AsyncMock(
+            return_value=[
+                OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Chapter 1 page 1 text"),
+                OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Chapter 1 page 2 text"),
+                OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
+            ]
+        )
 
         response = client.post("/internal/api/v1/workers/start_ocr", json={"project_id": 1})
 
@@ -102,10 +104,12 @@ class TestStartScriptWriting:
 
         project_service.find_project.return_value.status = ProjectStatus.ocr_completed
 
-        script_service.process = AsyncMock(return_value=[
-            ScriptWritingWorkerResult(chapter_id=1, script="Generated script for chapter 1"),
-            ScriptWritingWorkerResult(chapter_id=2, script="Generated script for chapter 2"),
-        ])
+        script_service.process = AsyncMock(
+            return_value=[
+                ScriptWritingWorkerResult(chapter_id=1, script="Generated script for chapter 1"),
+                ScriptWritingWorkerResult(chapter_id=2, script="Generated script for chapter 2"),
+            ]
+        )
 
         response = client.post("/internal/api/v1/workers/start_script_writing", json={"project_id": 1})
 
@@ -128,10 +132,12 @@ class TestStartTTS:
 
         project_service.find_project.return_value.status = ProjectStatus.writing_script_completed
 
-        tts_service.generate_audio = AsyncMock(return_value=[
-            TTSWorkerResult(chapter_id=1, index=3),
-            TTSWorkerResult(chapter_id=2, index=2),
-        ])
+        tts_service.generate_audio = AsyncMock(
+            return_value=[
+                TTSWorkerResult(chapter_id=1, index=3),
+                TTSWorkerResult(chapter_id=2, index=2),
+            ]
+        )
 
         response = client.post("/internal/api/v1/workers/start_tts", json={"project_id": 1})
 
