@@ -43,9 +43,7 @@ class TestScriptWritingServiceIntegration:
     @pytest.mark.integration
     @patch("bookcast.services.script_writing.PodcastOrchestrator")
     async def test_process(self, mock_orchestrator_class):
-        project = Project(
-            id=1, filename="test_sample.pdf", status=ProjectStatus.start_writing_script
-        )
+        project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_writing_script)
         chapters = [
             Chapter(
                 id=1,
