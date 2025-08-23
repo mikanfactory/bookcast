@@ -32,7 +32,7 @@ def client_with_mock():
     chapter_service = create_mock_chapter_service()
 
     project_service.find_project.return_value = Project(
-        id=1, filename="test.pdf", max_page_number=20, status=ProjectStatus.not_started
+        id=1, filename="test.pdf", status=ProjectStatus.not_started
     )
 
     chapter_service.select_chapter_by_project_id.return_value = [

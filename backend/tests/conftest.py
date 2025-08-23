@@ -26,7 +26,6 @@ def completed_project(supabase_client):
             [
                 {
                     "filename": "test1.pdf",
-                    "max_page_number": 2,
                     "status": "creating_audio_completed",
                 },
             ]
@@ -73,7 +72,6 @@ def starting_project(supabase_client):
             [
                 {
                     "filename": "test2.pdf",
-                    "max_page_number": 3,
                     "status": "not_started",
                 },
             ]

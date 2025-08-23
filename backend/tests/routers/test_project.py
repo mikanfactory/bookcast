@@ -20,14 +20,14 @@ def client_with_mock():
     project_service = create_mock_project_service()
 
     project_service.project_repo.select_all.return_value = [
-        Project(id=1, filename="test1.pdf", max_page_number=10, status=ProjectStatus.not_started),
-        Project(id=2, filename="test2.pdf", max_page_number=20, status=ProjectStatus.ocr_completed),
+        Project(id=1, filename="test1.pdf", status=ProjectStatus.not_started),
+        Project(id=2, filename="test2.pdf", status=ProjectStatus.ocr_completed),
     ]
     project_service.project_repo.find.return_value = Project(
-        id=1, filename="test1.pdf", max_page_number=10, status=ProjectStatus.not_started
+        id=1, filename="test1.pdf", status=ProjectStatus.not_started
     )
     project_service.project_repo.create.return_value = Project(
-        id=1, filename="test.pdf", max_page_number=5, status=ProjectStatus.not_started
+        id=1, filename="test.pdf", status=ProjectStatus.not_started
     )
 
     app.dependency_overrides[get_project_service] = lambda: project_service
@@ -104,11 +104,9 @@ class TestUploadFile:
         client, project_service = client_with_mock
 
         with (
-            patch("bookcast.services.project.convert_from_path") as mock_convert,
             patch("bookcast.services.file.OCRImageFileService.write") as mock_write,
             patch("bookcast.services.file.OCRImageFileService.upload_gcs_from_file") as mock_upload,
         ):
-            mock_convert.return_value = [MagicMock() for _ in range(5)]
             mock_write.return_value = "/tmp/test.pdf"
 
             file = b"mock file content"
@@ -117,7 +115,6 @@ class TestUploadFile:
             assert response.status_code == 200
             resp = response.json()
             assert resp["filename"] == "test.pdf"
-            assert resp["max_page_number"] == 5
 
             project_service.project_repo.create.assert_called_once()
             mock_upload.assert_called_once()

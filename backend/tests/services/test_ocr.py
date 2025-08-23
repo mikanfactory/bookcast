@@ -36,7 +36,7 @@ class TestOCRServiceIntegration:
     @pytest.mark.integration
     @patch("bookcast.services.ocr.OCROrchestrator")
     async def test_process(self, mock_orchestrator_class):
-        project = Project(id=1, filename="test_sample.pdf", max_page_number=3, status=ProjectStatus.start_ocr)
+        project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_ocr)
         chapters = [
             Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=3, status=ChapterStatus.start_ocr)
         ]

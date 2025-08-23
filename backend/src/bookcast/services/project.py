@@ -1,7 +1,5 @@
 from typing import BinaryIO
 
-from pdf2image import convert_from_path
-
 from bookcast.entities import Project, ProjectStatus
 from bookcast.repositories import ChapterRepository, ProjectRepository
 from bookcast.services.file import OCRImageFileService
@@ -23,8 +21,7 @@ class ProjectService:
         source_file_path = OCRImageFileService.write(filename, file_content)
         OCRImageFileService.upload_gcs_from_file(source_file_path)
 
-        images = convert_from_path(source_file_path)
-        project = Project(filename=filename, max_page_number=len(images))
+        project = Project(filename=filename)
         return self.project_repo.create(project)
 
     def update_project_status(self, project: Project, status: ProjectStatus) -> Project:

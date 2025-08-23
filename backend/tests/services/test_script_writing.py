@@ -44,7 +44,7 @@ class TestScriptWritingServiceIntegration:
     @patch("bookcast.services.script_writing.PodcastOrchestrator")
     async def test_process(self, mock_orchestrator_class):
         project = Project(
-            id=1, filename="test_sample.pdf", max_page_number=3, status=ProjectStatus.start_writing_script
+            id=1, filename="test_sample.pdf", status=ProjectStatus.start_writing_script
         )
         chapters = [
             Chapter(

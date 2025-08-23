@@ -18,14 +18,14 @@ def project_service_mock():
     project_service = create_mock_project_service()
 
     project_service.project_repo.select_all.return_value = [
-        Project(id=1, filename="test1.pdf", max_page_number=10, status=ProjectStatus.not_started),
-        Project(id=2, filename="test2.pdf", max_page_number=20, status=ProjectStatus.ocr_completed),
+        Project(id=1, filename="test1.pdf", status=ProjectStatus.not_started),
+        Project(id=2, filename="test2.pdf", status=ProjectStatus.ocr_completed),
     ]
     project_service.project_repo.find.return_value = Project(
-        id=1, filename="test1.pdf", max_page_number=10, status=ProjectStatus.not_started
+        id=1, filename="test1.pdf", status=ProjectStatus.not_started
     )
     project_service.project_repo.create.return_value = Project(
-        id=1, filename="test.pdf", max_page_number=5, status=ProjectStatus.not_started
+        id=1, filename="test.pdf", status=ProjectStatus.not_started
     )
 
     return project_service
@@ -76,7 +76,7 @@ class TestFindProject:
 
 class TestUpdateProjectStatus:
     def test_update_project_status(self, project_service_mock):
-        project = Project(id=1, filename="test.pdf", max_page_number=10, status=ProjectStatus.not_started)
+        project = Project(id=1, filename="test.pdf", status=ProjectStatus.not_started)
         new_status = ProjectStatus.start_ocr
 
         project_service_mock.update_project_status(project, new_status)
@@ -92,11 +92,9 @@ class TestCreateProject:
         file = BytesIO(file_content)
 
         with (
-            patch("bookcast.services.project.convert_from_path") as mock_convert,
             patch("bookcast.services.file.OCRImageFileService.write") as mock_write,
             patch("bookcast.services.file.OCRImageFileService.upload_gcs_from_file") as mock_upload,
         ):
-            mock_convert.return_value = [MagicMock() for _ in range(5)]
             mock_write.return_value = "/tmp/test.pdf"
 
             result = project_service_mock.create_project(filename, file)

@@ -21,7 +21,7 @@ class TestProjectRepository:
 
     @pytest.mark.integration
     def test_create(self, project_repository):
-        project = Project(filename="test_project", max_page_number=10)
+        project = Project(filename="test_project")
         created_project = project_repository.create(project)
 
         assert created_project.id is not None
