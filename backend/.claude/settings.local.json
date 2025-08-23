@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(make test:*)",
-      "Bash(make test/integration:*)"
+      "Bash(make test/integration:*)",
+      "Bash(make lint:*)",
+      "Bash(make format:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)"
     ],
     "deny": []
   }
