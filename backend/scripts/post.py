@@ -105,6 +105,19 @@ def _invoke_by_cloud_task(project_id, fn_name, queue):
     return {"task_name": response.name, "status": "queued"}
 
 
+def download_completed_audio(project_id):
+    url = f"{service_url}/api/v1/projects/{project_id}/download"
+    resp = requests.get(url)
+    if resp.ok:
+        path = f"downloads/project_{project_id}.zip"
+        with open(path, "wb") as file:
+            file.write(resp.content)
+        print(f"Downloaded completed audio to {path}")
+    else:
+        print(f"Failed to download completed audio for project {project_id}.")
+        print(resp.text)
+
+
 invoke_ocr = partial(_invoke, "start_ocr")
 invoke_script_writing = partial(_invoke, "start_script_writing")
 invoke_tts = partial(_invoke, "start_tts")
@@ -118,8 +131,9 @@ def main():
     # invoke_ocr(project_id)
     # invoke_script_writing(project_id)
     # invoke_tts(project_id)
-    invoke_create_audio(project_id)
+    # invoke_create_audio(project_id)
     # _invoke_by_cloud_task(project_id, "start_tts", BOOKCAST_TTS_WORKER_QUEUE)
+    download_completed_audio(project_id)
 
 
 if __name__ == "__main__":

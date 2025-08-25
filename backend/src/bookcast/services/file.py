@@ -179,3 +179,12 @@ class CompletedAudioFileService(GCSFileUploadable):
         output_path = resolve_audio_output_path(filename, chapter_number)
         audio.export(output_path, format="wav", bitrate="192k")
         return output_path
+
+    @classmethod
+    def download_from_gcs(cls, filename: str, chapter_number: int) -> pathlib.Path:
+        audio_dir = build_completed_audio_directory(filename)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        audio_path = resolve_audio_output_path(filename, chapter_number)
+        cls._download_from_gcs(audio_path)
+        return audio_path

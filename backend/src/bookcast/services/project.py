@@ -1,8 +1,27 @@
-from typing import BinaryIO
+import pathlib
+import io
+import zipfile
+from typing import BinaryIO, Generator
 
-from bookcast.entities import Project, ProjectStatus
+from bookcast.entities import Project, ProjectStatus, Chapter
 from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.file import OCRImageFileService
+from bookcast.services.file import OCRImageFileService, CompletedAudioFileService
+
+
+def generate_zip(project: Project, chapters: list[Chapter]) -> Generator[bytes, None, None]:
+    buffer = io.BytesIO()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for chapter in chapters:
+            path = CompletedAudioFileService.download_from_gcs(project.filename, chapter.chapter_number)
+            zip_file.write(path, f"chapter_{chapter.chapter_number:03d}.wav")
+
+    buffer.seek(0)
+    while True:
+        chunk = buffer.read(8192)
+        if not chunk:
+            break
+        yield chunk
 
 
 class ProjectService:
@@ -28,3 +47,12 @@ class ProjectService:
         project.status = status
         self.project_repo.update(project)
         return project
+
+    def create_download_archive(self, project_id: int) -> tuple[Generator[bytes, None, None], str]:
+        project = self.project_repo.find(project_id)
+        if not project:
+            raise ValueError(f"Project with ID {project_id} not found")
+
+        chapters = self.chapter_repo.select_chapter_by_project_id(project_id)
+        filename = f"{pathlib.Path(project.filename).stem}.zip"
+        return generate_zip(project, chapters), filename

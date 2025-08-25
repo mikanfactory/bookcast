@@ -1,9 +1,12 @@
+import pathlib
+import tempfile
+import zipfile
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bookcast.entities import Project, ProjectStatus
+from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
 from bookcast.services.project import ProjectService
 
 
@@ -102,3 +105,62 @@ class TestCreateProject:
             assert result
             assert isinstance(result, Project)
             mock_upload.assert_called_once()
+
+
+class TestCreateDownloadArchive:
+    def test_create_download_archive_success(self, project_service_mock):
+        project_id = 1
+        project = Project(id=1, filename="test.pdf", status=ProjectStatus.creating_audio_completed)
+        chapters = [
+            Chapter(
+                id=1,
+                project_id=1,
+                chapter_number=1,
+                start_page=1,
+                end_page=10,
+                status=ChapterStatus.creating_audio_completed,
+            ),
+            Chapter(
+                id=2,
+                project_id=1,
+                chapter_number=2,
+                start_page=11,
+                end_page=20,
+                status=ChapterStatus.creating_audio_completed,
+            ),
+        ]
+
+        project_service_mock.project_repo.find.return_value = project
+        project_service_mock.chapter_repo.select_chapter_by_project_id.return_value = chapters
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            chapter1_path = pathlib.Path(temp_dir) / "chapter1.wav"
+            chapter2_path = pathlib.Path(temp_dir) / "chapter2.wav"
+
+            chapter1_path.write_bytes(b"dummy audio data 1")
+            chapter2_path.write_bytes(b"dummy audio data 2")
+
+            with patch("bookcast.services.file.CompletedAudioFileService.download_from_gcs") as mock_download:
+                mock_download.side_effect = [str(chapter1_path), str(chapter2_path)]
+
+                zip_generator, filename = project_service_mock.create_download_archive(project_id)
+
+                assert filename == "test.zip"
+                assert zip_generator is not None
+
+                zip_data = b"".join(zip_generator)
+
+                assert len(zip_data) > 0
+
+                with zipfile.ZipFile(BytesIO(zip_data), "r") as zip_file:
+                    file_list = zip_file.namelist()
+                    assert len(file_list) == 2
+                    assert "chapter_001.wav" in file_list
+                    assert "chapter_002.wav" in file_list
+
+                    assert zip_file.read("chapter_001.wav") == b"dummy audio data 1"
+                    assert zip_file.read("chapter_002.wav") == b"dummy audio data 2"
+
+                project_service_mock.project_repo.find.assert_called_once_with(project_id)
+                project_service_mock.chapter_repo.select_chapter_by_project_id.assert_called_once_with(project_id)
+

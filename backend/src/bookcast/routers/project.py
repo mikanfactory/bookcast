@@ -1,7 +1,9 @@
 import traceback
+from urllib.parse import quote
 from logging import getLogger
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 from bookcast.dependencies import get_project_service
 from bookcast.entities import Project
@@ -31,15 +33,32 @@ async def show(project_id: int, project_service: ProjectService = Depends(get_pr
 
 @router.post("/upload_file")
 async def upload_file(file: UploadFile, project_service: ProjectService = Depends(get_project_service)):
-    logger.info(f"Received file upload: {file.filename}")
+    fname = quote(file.filename, safe='')
+    logger.info(f"Received file upload: {fname}")
     try:
-        results = project_service.create_project(file.filename, file.file)
+        results = project_service.create_project(fname, file.file)
     except Exception as e:
-        logger.error(f"Error creating project from file {file.filename}: {e}")
+        logger.error(f"Error creating project from file {fname}: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Failed to create project from file")
 
-    logger.info(f"Project created with ID: {results.id} for file: {file.filename}")
+    logger.info(f"Project created with ID: {results.id} for file: {fname}")
     if results:
         return results
     raise HTTPException(status_code=500, detail="Failed to create project from file")
+
+
+@router.get("/{project_id}/download")
+async def download_project(project_id: int, project_service: ProjectService = Depends(get_project_service)):
+    logger.info(f"Creating download archive for project ID: {project_id}")
+    try:
+        zip_generator, filename = project_service.create_download_archive(project_id)
+        return StreamingResponse(
+            zip_generator,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"},
+        )
+    except Exception as e:
+        logger.error(f"Error creating download archive for project {project_id}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Failed to create download archive")

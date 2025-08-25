@@ -124,3 +124,24 @@ class TestUploadFile:
 
         response = client.post("/api/v1/projects/upload_file", files={})
         assert response.status_code == 422  # Unprocessable Entity
+
+
+class TestDownloadProject:
+    def test_download_project_success(self, client_with_mock):
+        client, project_service = client_with_mock
+
+        def mock_zip_generator():
+            yield b"fake zip content"
+
+        with patch.object(project_service, "create_download_archive") as mock_create_archive:
+            mock_create_archive.return_value = (mock_zip_generator(), "test_audio.zip")
+
+            response = client.get("/api/v1/projects/1/download")
+
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "application/zip"
+            assert "attachment" in response.headers["content-disposition"]
+            assert "test_audio.zip" in response.headers["content-disposition"]
+            assert response.content == b"fake zip content"
+
+            mock_create_archive.assert_called_once_with(1)
