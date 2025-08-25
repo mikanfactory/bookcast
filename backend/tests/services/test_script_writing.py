@@ -1,10 +1,10 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus, ScriptWritingWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
 from bookcast.services.script_writing_service import (
     PodcastOrchestrator,
     PodcastScriptEvaluator,
@@ -62,16 +62,9 @@ class TestScriptWritingServiceIntegration:
             "Speaker1: こんにちは。今日は面白い内容ですね。\nSpeaker2: 本当ですね。詳しく説明していきましょう。"
         )
 
-        script_writing_service = ScriptWritingService()
-        results = await script_writing_service.process(project, chapters)
+        mock_chapter_service = MagicMock()
+        script_writing_service = ScriptWritingService(mock_chapter_service)
+        await script_writing_service.process(project, chapters)
 
-        assert isinstance(results, list)
-        assert len(results) == 1
-
-        result = results[0]
-        assert isinstance(result, ScriptWritingWorkerResult)
-        assert result.chapter_id == 1
-        assert "Speaker1:" in result.script
-        assert "Speaker2:" in result.script
-
+        mock_chapter_service.update.assert_called_once()
         mock_orchestrator.run.assert_called_once_with("This is extracted text from the chapter.")

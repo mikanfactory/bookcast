@@ -1,4 +1,4 @@
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, ScriptWritingWorkerResult, TTSWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, TTSWorkerResult
 from bookcast.repositories import ChapterRepository, ProjectRepository
 
 
@@ -13,6 +13,10 @@ class ChapterService:
     def create_chapters(self, chapters: list[Chapter]):
         self.chapter_repo.bulk_create(chapters)
         return chapters
+
+    def update(self, chapter: Chapter) -> Chapter:
+        self.chapter_repo.update(chapter)
+        return chapter
 
     def update_chapters_status(self, chapters: list[Chapter], status: ChapterStatus) -> list[Chapter]:
         for chapter in chapters:
@@ -32,17 +36,6 @@ class ChapterService:
 
             chapter.status = ChapterStatus.ocr_completed
             chapter.extracted_text = "\n".join(acc)
-            self.chapter_repo.update(chapter)
-
-        return chapters
-
-    def update_chapter_script(self, chapters: list[Chapter], results: list[ScriptWritingWorkerResult]) -> list[Chapter]:
-        for chapter in chapters:
-            for result in results:
-                if result.chapter_id == chapter.id:
-                    chapter.script = result.script
-
-            chapter.status = ChapterStatus.writing_script_completed
             self.chapter_repo.update(chapter)
 
         return chapters

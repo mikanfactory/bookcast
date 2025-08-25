@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, ScriptWritingWorkerResult, TTSWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, TTSWorkerResult
 from bookcast.services.chapter_service import ChapterService
 
 
@@ -94,28 +94,6 @@ class TestUpdateChapterExtractedText:
         assert chapters[0].extracted_text == "Page 1 text\nPage 2 text"
         assert chapters[1].status == ChapterStatus.ocr_completed
         assert chapters[1].extracted_text == "Page 4 text"
-        assert chapter_service_mock.chapter_repo.update.call_count == 2
-
-
-class TestUpdateChapterScript:
-    def test_update_chapter_script(self, chapter_service_mock):
-        chapters = [
-            Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=5, status=ChapterStatus.ocr_completed),
-            Chapter(
-                id=2, project_id=1, chapter_number=2, start_page=6, end_page=10, status=ChapterStatus.ocr_completed
-            ),
-        ]
-        script_results = [
-            ScriptWritingWorkerResult(chapter_id=1, script="Chapter 1 script"),
-            ScriptWritingWorkerResult(chapter_id=2, script="Chapter 2 script"),
-        ]
-
-        chapter_service_mock.update_chapter_script(chapters, script_results)
-
-        assert chapters[0].status == ChapterStatus.writing_script_completed
-        assert chapters[0].script == "Chapter 1 script"
-        assert chapters[1].status == ChapterStatus.writing_script_completed
-        assert chapters[1].script == "Chapter 2 script"
         assert chapter_service_mock.chapter_repo.update.call_count == 2
 
 

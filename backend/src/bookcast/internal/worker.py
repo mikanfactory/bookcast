@@ -27,7 +27,6 @@ from bookcast.services.text_to_speach_service import TextToSpeechService
 logger = logging.getLogger(__name__)
 
 ocr_service = OCRService()
-script_writing_service = ScriptWritingService()
 tts_service = TextToSpeechService()
 audio_service = AudioService()
 
@@ -98,6 +97,8 @@ async def start_script_writing(
     project_service: ProjectService = Depends(get_project_service),
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
+    script_writing_service = ScriptWritingService(chapter_service)
+
     logger.info(f"Starting script writing for project ID: {data.project_id}...")
 
     project = project_service.find_project(data.project_id)
@@ -109,11 +110,10 @@ async def start_script_writing(
     project_service.update_project_status(project, ProjectStatus.start_writing_script)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_writing_script)
 
-    results = await script_writing_service.process(project, chapters)
+    await script_writing_service.process(project, chapters)
 
     logger.info(f"Updating project status to script writing completed for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.writing_script_completed)
-    chapter_service.update_chapter_script(chapters, results)
 
     try:
         logger.info("Invoking TTS worker...")

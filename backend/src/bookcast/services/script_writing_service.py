@@ -12,7 +12,8 @@ from langsmith import traceable
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, Project, ScriptWritingWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, Project
+from bookcast.services.chapter_service import ChapterService
 
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
@@ -209,8 +210,9 @@ class PodcastOrchestrator:
 
 
 class ScriptWritingService:
-    def __init__(self):
+    def __init__(self, chapter_service: ChapterService):
         self.semaphore = asyncio.Semaphore(10)
+        self.chapter_service = chapter_service
 
     @staticmethod
     async def _generate(chapter: Chapter) -> str:
@@ -219,19 +221,26 @@ class ScriptWritingService:
         response = await script_writer_agent.run(chapter.extracted_text)
         return response
 
-    async def _generate_script(self, chapter: Chapter) -> ScriptWritingWorkerResult:
+    async def _generate_script(self, chapter: Chapter):
         async with self.semaphore:
             logger.info(f"Generating script for chapter: {str(chapter)}")
             script = await self._generate(chapter)
 
-        return ScriptWritingWorkerResult(chapter_id=chapter.id, script=script)
+        chapter.status = ChapterStatus.writing_script_completed
+        chapter.script = script
+        self.chapter_service.update(chapter)
 
-    async def _generate_scripts(self, chapters: list[Chapter]) -> list[ScriptWritingWorkerResult]:
-        tasks = [self._generate_script(chapter) for chapter in chapters]
+    async def _generate_scripts(self, chapters: list[Chapter]):
+        tasks = []
+        for chapter in chapters:
+            if chapter.status == ChapterStatus.start_writing_script:
+                tasks.append(self._generate_script(chapter))
+            else:
+                logger.info(f"Skipping script generation for chapter (already completed): {str(chapter)}")
+
         return await asyncio.gather(*tasks)
 
-    async def process(self, project: Project, chapters: list[Chapter]) -> list[ScriptWritingWorkerResult]:
+    async def process(self, project: Project, chapters: list[Chapter]):
         logger.info("Start writing script.")
-        results = await self._generate_scripts(chapters)
+        await self._generate_scripts(chapters)
         logger.info("End writing script.")
-        return results

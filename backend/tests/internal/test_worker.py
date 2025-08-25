@@ -10,7 +10,6 @@ from bookcast.entities import (
     OCRWorkerResult,
     Project,
     ProjectStatus,
-    ScriptWritingWorkerResult,
     TTSWorkerResult,
 )
 from bookcast.main import app
@@ -96,18 +95,15 @@ class TestStartOCR:
 
 class TestStartScriptWriting:
     @patch("bookcast.internal.worker.invoke_task")
-    @patch("bookcast.internal.worker.script_writing_service")
-    def test_start_script_writing_success(self, script_service, invoke_task, client_with_mock):
+    @patch("bookcast.internal.worker.ScriptWritingService")
+    def test_start_script_writing_success(self, mock_script_service_class, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.ocr_completed
 
-        script_service.process = AsyncMock(
-            return_value=[
-                ScriptWritingWorkerResult(chapter_id=1, script="Generated script for chapter 1"),
-                ScriptWritingWorkerResult(chapter_id=2, script="Generated script for chapter 2"),
-            ]
-        )
+        # Mock the ScriptWritingService instance
+        mock_script_service_instance = AsyncMock()
+        mock_script_service_class.return_value = mock_script_service_instance
 
         response = client.post("/internal/api/v1/workers/start_script_writing", json={"project_id": 1})
 
@@ -116,9 +112,8 @@ class TestStartScriptWriting:
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
-        script_service.process.assert_called_once()
+        mock_script_service_instance.process.assert_called_once()
         project_service.update_project_status.assert_called()
-        chapter_service.update_chapter_script.assert_called_once()
         invoke_task.assert_called_once_with(1, "start_tts", "bookcast-tts-worker")
 
 

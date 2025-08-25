@@ -7,11 +7,6 @@ class OCRWorkerResult(BaseModel):
     extracted_text: str
 
 
-class ScriptWritingWorkerResult(BaseModel):
-    chapter_id: int
-    script: str
-
-
 class TTSWorkerResult(BaseModel):
     chapter_id: int
     index: int
