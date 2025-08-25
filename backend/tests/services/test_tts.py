@@ -37,8 +37,10 @@ class TestTextToSpeechServiceIntegration:
         assert chapters[0].status == ChapterStatus.tts_completed
         assert chapters[0].script_file_count == 1
 
+        mock_invoke.assert_called_once()
         mock_tts_file_service.write.assert_called_once_with("test_sample.pdf", 1, 0, b"fake_audio_data")
         mock_tts_file_service.upload_gcs_from_file.assert_called_once_with("/fake/path/audio.wav")
+        mock_chapter_service.update.assert_called_once()
 
     class TestSplitScript:
         def test_long_text(self):

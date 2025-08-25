@@ -40,7 +40,8 @@ class TestOCRServiceIntegration:
     async def test_process(self, mock_download_from_gcs, mock_orchestrator_class):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_ocr)
         chapters = [
-            Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=3, status=ChapterStatus.start_ocr)
+            Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=3, status=ChapterStatus.start_ocr),
+            Chapter(id=2, project_id=1, chapter_number=2, start_page=4, end_page=5, status=ChapterStatus.start_ocr),
         ]
 
         mock_orchestrator = AsyncMock()
@@ -48,12 +49,17 @@ class TestOCRServiceIntegration:
         mock_orchestrator.run.return_value = "Extracted text from page"
 
         mock_chapter_service = MagicMock()
-        ocr_service = OCRService(mock_chapter_service)
+        ocr_service_instance = OCRService(mock_chapter_service)
 
         test_file_path = pathlib.Path("tests/resources/test_sample.pdf")
         mock_download_from_gcs.return_value = test_file_path
 
-        await ocr_service.process(project, chapters)
+        await ocr_service_instance.process(project, chapters)
+
+        # OCROrchestrator should be instantiated for each page
+        assert mock_orchestrator_class.call_count == 3
+        assert mock_orchestrator.run.call_count == 3
+        assert mock_chapter_service.update.call_count == 2
 
     def test_image_to_base64_png(self):
         test_image = Image.new("RGB", (100, 100), color="red")

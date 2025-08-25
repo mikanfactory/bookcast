@@ -67,5 +67,5 @@ class TestScriptWritingServiceIntegration:
         script_writing_service = ScriptWritingService(mock_chapter_service)
         await script_writing_service.process(project, chapters)
 
-        mock_chapter_service.update.assert_called_once()
         mock_orchestrator.run.assert_called_once_with("This is extracted text from the chapter.")
+        mock_chapter_service.update.assert_called_once()
