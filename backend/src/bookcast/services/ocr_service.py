@@ -10,10 +10,11 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from pdf2image import convert_from_path
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, OCRWorkerResult, Project
+from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, Project
+from bookcast.services.chapter_service import ChapterService
 from bookcast.services.file_service import OCRImageFileService
 
 logger = getLogger(__name__)
@@ -163,9 +164,17 @@ class OCROrchestrator:
             return result["calibrated_string"]
 
 
+class Page(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    page_number: int
+    image: Image.Image
+
+
 class OCRService:
-    def __init__(self):
+    def __init__(self, chapter_service: ChapterService):
         self.semaphore = asyncio.Semaphore(10)
+        self.chapter_service = chapter_service
 
     @staticmethod
     def image_to_base64_png(image: Image.Image) -> str:
@@ -180,35 +189,37 @@ class OCRService:
         response = await ocr_agent.run(page_number, base64_image)
         return response
 
-    async def _extract_text(
-        self, project: Project, chapter: Chapter, page_number: int, image: Image.Image
-    ) -> OCRWorkerResult:
+    async def _extract_page_text(self, project: Project, chapter: Chapter, page: Page) -> OCRWorkerResult:
         async with self.semaphore:
-            extracted_text = await self._extract(page_number, image)
+            extracted_text = await self._extract(page.page_number, page.image)
 
-        return OCRWorkerResult(chapter_id=chapter.id, page_number=page_number, extracted_text=extracted_text)
+        return OCRWorkerResult(chapter_id=chapter.id, page_number=page.page_number, extracted_text=extracted_text)
 
-    async def _extract_text_from_pdf(
-        self, project: Project, chapters: list[Chapter], book_path: pathlib.Path
-    ) -> list[OCRWorkerResult]:
-        images = convert_from_path(book_path)
+    async def _extract_chapter_text(self, project: Project, chapter: Chapter, pages: list[Page]):
         tasks = []
-        for chapter in chapters:
-            ts = [
-                self._extract_text(project, chapter, i, images[i - 1])
-                for i in range(chapter.start_page, chapter.end_page)
-            ]
-            tasks.extend(ts)
+        for page in pages:
+            tasks.append(self._extract_page_text(project, chapter, page))
 
-        logger.info(f"Extracting text from PDF: {project.filename}, total pages: {len(tasks)}")
         results = await asyncio.gather(*tasks)
-        return results
 
-    async def process(self, project: Project, chapters: list[Chapter]) -> list[OCRWorkerResult]:
+        results.sort(key=lambda x: x.page_number)
+        chapter.status = ChapterStatus.ocr_completed
+        chapter.extracted_text = "\n".join([result.extracted_text for result in results])
+        self.chapter_service.update(chapter)
+
+    async def _process(self, project: Project, chapters: list[Chapter], book_path: pathlib.Path):
+        images = convert_from_path(book_path)
+        for chapter in chapters:
+            if chapter.status != ChapterStatus.start_ocr:
+                pages = [Page(page_number=i, image=images[i - 1]) for i in range(chapter.start_page, chapter.end_page)]
+                await self._extract_chapter_text(project, chapter, pages)
+            else:
+                logger.info(f"Skipping OCR for chapter (already completed): {str(chapter)}")
+
+    async def process(self, project: Project, chapters: list[Chapter]):
         logger.info(f"Starting OCR: {project.filename}")
 
         book_path = OCRImageFileService.download_from_gcs(project.filename)
-        results = await self._extract_text_from_pdf(project, chapters, book_path)
+        await self._process(project, chapters, book_path)
 
         logger.info(f"Completed OCR: {project.filename}")
-        return results

@@ -1,4 +1,4 @@
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult
+from bookcast.entities import Chapter, ChapterStatus
 from bookcast.repositories import ChapterRepository, ProjectRepository
 
 
@@ -21,21 +21,6 @@ class ChapterService:
     def update_chapters_status(self, chapters: list[Chapter], status: ChapterStatus) -> list[Chapter]:
         for chapter in chapters:
             chapter.status = status
-            self.chapter_repo.update(chapter)
-
-        return chapters
-
-    def update_chapter_extracted_text(self, chapters: list[Chapter], results: list[OCRWorkerResult]) -> list[Chapter]:
-        results.sort(key=lambda x: x.page_number)
-
-        for chapter in chapters:
-            acc = []
-            for result in results:
-                if result.chapter_id == chapter.id:
-                    acc.append(result.extracted_text)
-
-            chapter.status = ChapterStatus.ocr_completed
-            chapter.extracted_text = "\n".join(acc)
             self.chapter_repo.update(chapter)
 
         return chapters

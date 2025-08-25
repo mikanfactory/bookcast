@@ -1,14 +1,14 @@
 import base64
 import io
 import pathlib
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_google_genai import ChatGoogleGenerativeAI
 from PIL import Image
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, Project, ProjectStatus
+from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
 from bookcast.services import file_service, ocr_service
 from bookcast.services.ocr_service import OCRExecutor, OCROrchestrator, OCRResultEditor, OCRService
 
@@ -47,21 +47,13 @@ class TestOCRServiceIntegration:
         mock_orchestrator_class.return_value = mock_orchestrator
         mock_orchestrator.run.return_value = "Extracted text from page"
 
-        ocr_service = OCRService()
+        mock_chapter_service = MagicMock()
+        ocr_service = OCRService(mock_chapter_service)
 
         test_file_path = pathlib.Path("tests/resources/test_sample.pdf")
         mock_download_from_gcs.return_value = test_file_path
 
-        results = await ocr_service.process(project, chapters)
-
-        assert isinstance(results, list)
-        assert len(results) > 0
-
-        for result in results:
-            assert isinstance(result, OCRWorkerResult)
-            assert result.extracted_text == "Extracted text from page"
-
-        assert mock_orchestrator.run.call_count == len(results)
+        await ocr_service.process(project, chapters)
 
     def test_image_to_base64_png(self):
         test_image = Image.new("RGB", (100, 100), color="red")

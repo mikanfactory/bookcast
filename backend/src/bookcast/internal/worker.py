@@ -26,7 +26,6 @@ from bookcast.services.text_to_speach_service import TextToSpeechService
 
 logger = logging.getLogger(__name__)
 
-ocr_service = OCRService()
 audio_service = AudioService()
 
 router = APIRouter(
@@ -63,6 +62,8 @@ async def start_ocr(
     project_service: ProjectService = Depends(get_project_service),
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
+    ocr_service = OCRService(chapter_service)
+
     logger.info(f"Starting OCR for project ID: {data.project_id}...")
 
     project = project_service.find_project(data.project_id)
@@ -74,11 +75,10 @@ async def start_ocr(
     project_service.update_project_status(project, ProjectStatus.start_ocr)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_ocr)
 
-    results = await ocr_service.process(project, chapters)
+    await ocr_service.process(project, chapters)
 
     logger.info(f"Updating project status to OCR completed for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.ocr_completed)
-    chapter_service.update_chapter_extracted_text(chapters, results)
 
     try:
         logger.info("Invoking script writing worker...")

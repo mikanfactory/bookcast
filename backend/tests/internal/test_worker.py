@@ -68,17 +68,17 @@ def client_with_mock():
 
 class TestStartOCR:
     @patch.object(worker, "invoke_task")
-    @patch.object(worker, "ocr_service")
-    def test_start_ocr_success(self, ocr_service, invoke_task, client_with_mock):
+    @patch.object(worker, "OCRService")
+    def test_start_ocr_success(self, mock_ocr_service_class, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
-        ocr_service.process = AsyncMock(
-            return_value=[
-                OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Chapter 1 page 1 text"),
-                OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Chapter 1 page 2 text"),
-                OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
-            ]
-        )
+        mock_ocr_service_instance = AsyncMock()
+        mock_ocr_service_class.return_value = mock_ocr_service_instance
+        mock_ocr_service_instance.process.return_value = [
+            OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Chapter 1 page 1 text"),
+            OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Chapter 1 page 2 text"),
+            OCRWorkerResult(chapter_id=2, page_number=11, extracted_text="Chapter 2 page 11 text"),
+        ]
 
         response = client.post("/internal/api/v1/workers/start_ocr", json={"project_id": 1})
 
@@ -87,9 +87,8 @@ class TestStartOCR:
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
-        ocr_service.process.assert_called_once()
+        mock_ocr_service_instance.process.assert_called_once()
         project_service.update_project_status.assert_called()
-        chapter_service.update_chapter_extracted_text.assert_called_once()
         invoke_task.assert_called_once_with(1, "start_script_writing", "bookcast-worker")
 
 

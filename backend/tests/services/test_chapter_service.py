@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult
+from bookcast.entities import Chapter, ChapterStatus
 from bookcast.services.chapter_service import ChapterService
 
 
@@ -73,27 +73,6 @@ class TestUpdateChaptersStatus:
 
         assert chapters[0].status == new_status
         assert chapters[1].status == new_status
-        assert chapter_service_mock.chapter_repo.update.call_count == 2
-
-
-class TestUpdateChapterExtractedText:
-    def test_update_chapter_extracted_text(self, chapter_service_mock):
-        chapters = [
-            Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=3, status=ChapterStatus.start_ocr),
-            Chapter(id=2, project_id=1, chapter_number=2, start_page=4, end_page=6, status=ChapterStatus.start_ocr),
-        ]
-        ocr_results = [
-            OCRWorkerResult(chapter_id=1, page_number=1, extracted_text="Page 1 text"),
-            OCRWorkerResult(chapter_id=1, page_number=2, extracted_text="Page 2 text"),
-            OCRWorkerResult(chapter_id=2, page_number=4, extracted_text="Page 4 text"),
-        ]
-
-        chapter_service_mock.update_chapter_extracted_text(chapters, ocr_results)
-
-        assert chapters[0].status == ChapterStatus.ocr_completed
-        assert chapters[0].extracted_text == "Page 1 text\nPage 2 text"
-        assert chapters[1].status == ChapterStatus.ocr_completed
-        assert chapters[1].extracted_text == "Page 4 text"
         assert chapter_service_mock.chapter_repo.update.call_count == 2
 
 
