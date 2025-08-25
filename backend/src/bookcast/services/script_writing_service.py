@@ -229,6 +229,7 @@ class ScriptWritingService:
         chapter.status = ChapterStatus.writing_script_completed
         chapter.script = script
         self.chapter_service.update(chapter)
+        logger.info(f"Completed script generation for chapter: {str(chapter)}")
 
     async def _generate_scripts(self, chapters: list[Chapter]):
         tasks = []

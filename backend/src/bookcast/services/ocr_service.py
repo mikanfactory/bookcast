@@ -200,12 +200,14 @@ class OCRService:
         for page in pages:
             tasks.append(self._extract_page_text(project, chapter, page))
 
+        logger.info(f"Starting OCR for chapter: {str(chapter)} with {len(tasks)} pages")
         results = await asyncio.gather(*tasks)
 
         results.sort(key=lambda x: x.page_number)
         chapter.status = ChapterStatus.ocr_completed
         chapter.extracted_text = "\n".join([result.extracted_text for result in results])
         self.chapter_service.update(chapter)
+        logger.info(f"OCR completed for chapter: {str(chapter)}")
 
     async def _process(self, project: Project, chapters: list[Chapter], book_path: pathlib.Path):
         images = convert_from_path(book_path)
