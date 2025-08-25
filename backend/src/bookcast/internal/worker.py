@@ -36,9 +36,7 @@ router = APIRouter(
 
 
 def success_response(message: str, data: dict) -> dict:
-    response = {"success": True, "message": message}
-    if data:
-        response["data"] = data
+    response = {"success": True, "message": message, "data": data}
     return response
 
 
