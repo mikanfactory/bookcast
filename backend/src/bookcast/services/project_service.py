@@ -1,11 +1,11 @@
-import pathlib
 import io
+import pathlib
 import zipfile
 from typing import BinaryIO, Generator
 
-from bookcast.entities import Project, ProjectStatus, Chapter
+from bookcast.entities import Chapter, Project, ProjectStatus
 from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.file_service import OCRImageFileService, CompletedAudioFileService
+from bookcast.services.file_service import CompletedAudioFileService, OCRImageFileService
 
 
 def generate_zip(project: Project, chapters: list[Chapter]) -> Generator[bytes, None, None]:

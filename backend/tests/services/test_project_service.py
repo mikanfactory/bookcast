@@ -89,26 +89,23 @@ class TestUpdateProjectStatus:
 
 
 class TestCreateProject:
-    def test_create_project(self, project_service_mock):
+    @patch("bookcast.services.file_service.OCRImageFileService.write", return_value="/tmp/test.pdf")
+    @patch("bookcast.services.file_service.OCRImageFileService.upload_gcs_from_file")
+    def test_create_project(self, mock_upload, mock_write, project_service_mock):
         filename = "test.pdf"
         file_content = b"mock file content"
         file = BytesIO(file_content)
 
-        with (
-            patch("bookcast.services.file_service.OCRImageFileService.write") as mock_write,
-            patch("bookcast.services.file_service.OCRImageFileService.upload_gcs_from_file") as mock_upload,
-        ):
-            mock_write.return_value = "/tmp/test.pdf"
+        result = project_service_mock.create_project(filename, file)
 
-            result = project_service_mock.create_project(filename, file)
-
-            assert result
-            assert isinstance(result, Project)
-            mock_upload.assert_called_once()
+        assert result
+        assert isinstance(result, Project)
+        mock_upload.assert_called_once()
 
 
 class TestCreateDownloadArchive:
-    def test_create_download_archive_success(self, project_service_mock):
+    @patch("bookcast.services.file_service.CompletedAudioFileService.download_from_gcs")
+    def test_create_download_archive_success(self, mock_download, project_service_mock):
         project_id = 1
         project = Project(id=1, filename="test.pdf", status=ProjectStatus.creating_audio_completed)
         chapters = [
@@ -140,27 +137,25 @@ class TestCreateDownloadArchive:
             chapter1_path.write_bytes(b"dummy audio data 1")
             chapter2_path.write_bytes(b"dummy audio data 2")
 
-            with patch("bookcast.services.file_service.CompletedAudioFileService.download_from_gcs") as mock_download:
-                mock_download.side_effect = [str(chapter1_path), str(chapter2_path)]
+            mock_download.side_effect = [str(chapter1_path), str(chapter2_path)]
 
-                zip_generator, filename = project_service_mock.create_download_archive(project_id)
+            zip_generator, filename = project_service_mock.create_download_archive(project_id)
 
-                assert filename == "test.zip"
-                assert zip_generator is not None
+            assert filename == "test.zip"
+            assert zip_generator is not None
 
-                zip_data = b"".join(zip_generator)
+            zip_data = b"".join(zip_generator)
 
-                assert len(zip_data) > 0
+            assert len(zip_data) > 0
 
-                with zipfile.ZipFile(BytesIO(zip_data), "r") as zip_file:
-                    file_list = zip_file.namelist()
-                    assert len(file_list) == 2
-                    assert "chapter_001.wav" in file_list
-                    assert "chapter_002.wav" in file_list
+            with zipfile.ZipFile(BytesIO(zip_data), "r") as zip_file:
+                file_list = zip_file.namelist()
+                assert len(file_list) == 2
+                assert "chapter_001.wav" in file_list
+                assert "chapter_002.wav" in file_list
 
-                    assert zip_file.read("chapter_001.wav") == b"dummy audio data 1"
-                    assert zip_file.read("chapter_002.wav") == b"dummy audio data 2"
+                assert zip_file.read("chapter_001.wav") == b"dummy audio data 1"
+                assert zip_file.read("chapter_002.wav") == b"dummy audio data 2"
 
-                project_service_mock.project_repo.find.assert_called_once_with(project_id)
-                project_service_mock.chapter_repo.select_chapter_by_project_id.assert_called_once_with(project_id)
-
+            project_service_mock.project_repo.find.assert_called_once_with(project_id)
+            project_service_mock.chapter_repo.select_chapter_by_project_id.assert_called_once_with(project_id)

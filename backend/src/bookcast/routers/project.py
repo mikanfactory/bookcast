@@ -1,6 +1,6 @@
 import traceback
-from urllib.parse import quote
 from logging import getLogger
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -33,7 +33,7 @@ async def show(project_id: int, project_service: ProjectService = Depends(get_pr
 
 @router.post("/upload_file")
 async def upload_file(file: UploadFile, project_service: ProjectService = Depends(get_project_service)):
-    fname = quote(file.filename, safe='')
+    fname = quote(file.filename, safe="")
     logger.info(f"Received file upload: {fname}")
     try:
         results = project_service.create_project(fname, file.file)

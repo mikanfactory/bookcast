@@ -100,24 +100,20 @@ class TestShow:
 
 
 class TestUploadFile:
-    def test_upload_file(self, client_with_mock):
+    @patch("bookcast.services.file_service.OCRImageFileService.write", return_value="/tmp/test.pdf")
+    @patch("bookcast.services.file_service.OCRImageFileService.upload_gcs_from_file")
+    def test_upload_file(self, mock_upload, mock_write, client_with_mock):
         client, project_service = client_with_mock
 
-        with (
-            patch("bookcast.services.file_service.OCRImageFileService.write") as mock_write,
-            patch("bookcast.services.file_service.OCRImageFileService.upload_gcs_from_file") as mock_upload,
-        ):
-            mock_write.return_value = "/tmp/test.pdf"
+        file = b"mock file content"
+        response = client.post("/api/v1/projects/upload_file", files={"file": ("test.pdf", file)})
 
-            file = b"mock file content"
-            response = client.post("/api/v1/projects/upload_file", files={"file": ("test.pdf", file)})
+        assert response.status_code == 200
+        resp = response.json()
+        assert resp["filename"] == "test.pdf"
 
-            assert response.status_code == 200
-            resp = response.json()
-            assert resp["filename"] == "test.pdf"
-
-            project_service.project_repo.create.assert_called_once()
-            mock_upload.assert_called_once()
+        project_service.project_repo.create.assert_called_once()
+        mock_upload.assert_called_once()
 
     def test_upload_file_error(self, client_with_mock):
         client, project_service = client_with_mock
@@ -126,22 +122,21 @@ class TestUploadFile:
         assert response.status_code == 422  # Unprocessable Entity
 
 
+def mock_zip_generator():
+    yield b"fake zip content"
+
+
 class TestDownloadProject:
-    def test_download_project_success(self, client_with_mock):
+    @patch.object(ProjectService, "create_download_archive", return_value=(mock_zip_generator(), "test_audio.zip"))
+    def test_download_project_success(self, mock_create_archive, client_with_mock):
         client, project_service = client_with_mock
 
-        def mock_zip_generator():
-            yield b"fake zip content"
+        response = client.get("/api/v1/projects/1/download")
 
-        with patch.object(project_service, "create_download_archive") as mock_create_archive:
-            mock_create_archive.return_value = (mock_zip_generator(), "test_audio.zip")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/zip"
+        assert "attachment" in response.headers["content-disposition"]
+        assert "test_audio.zip" in response.headers["content-disposition"]
+        assert response.content == b"fake zip content"
 
-            response = client.get("/api/v1/projects/1/download")
-
-            assert response.status_code == 200
-            assert response.headers["content-type"] == "application/zip"
-            assert "attachment" in response.headers["content-disposition"]
-            assert "test_audio.zip" in response.headers["content-disposition"]
-            assert response.content == b"fake zip content"
-
-            mock_create_archive.assert_called_once_with(1)
+        mock_create_archive.assert_called_once_with(1)
