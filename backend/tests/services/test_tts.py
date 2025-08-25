@@ -3,12 +3,13 @@ from unittest.mock import patch
 import pytest
 
 from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus, TTSWorkerResult
+from bookcast.services import text_to_speach_service
 from bookcast.services.text_to_speach_service import TextToSpeechService
 
 
 class TestTextToSpeechServiceIntegration:
     @pytest.mark.integration
-    @patch("bookcast.services.text_to_speach_service.TTSFileService")
+    @patch.object(text_to_speach_service, "TTSFileService")
     @patch.object(TextToSpeechService, "_invoke", return_value=b"fake_audio_data")
     async def test_generate_audio(self, mock_invoke, mock_tts_file_service):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_tts)

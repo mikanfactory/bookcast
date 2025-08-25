@@ -5,6 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
+from bookcast.services import script_writing_service
 from bookcast.services.script_writing_service import (
     PodcastOrchestrator,
     PodcastScriptEvaluator,
@@ -41,7 +42,7 @@ def test_podcast_orchestrator(llm):
 
 class TestScriptWritingServiceIntegration:
     @pytest.mark.integration
-    @patch("bookcast.services.script_writing_service.PodcastOrchestrator")
+    @patch.object(script_writing_service, "PodcastOrchestrator")
     async def test_process(self, mock_orchestrator_class):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_writing_script)
         chapters = [

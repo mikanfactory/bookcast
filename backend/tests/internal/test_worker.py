@@ -12,6 +12,7 @@ from bookcast.entities import (
     ProjectStatus,
     TTSWorkerResult,
 )
+from bookcast.internal import worker
 from bookcast.main import app
 from bookcast.services.chapter_service import ChapterService
 from bookcast.services.project_service import ProjectService
@@ -67,8 +68,8 @@ def client_with_mock():
 
 
 class TestStartOCR:
-    @patch("bookcast.internal.worker.invoke_task")
-    @patch("bookcast.internal.worker.ocr_service")
+    @patch.object(worker, "invoke_task")
+    @patch.object(worker, "ocr_service")
     def test_start_ocr_success(self, ocr_service, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
@@ -94,8 +95,8 @@ class TestStartOCR:
 
 
 class TestStartScriptWriting:
-    @patch("bookcast.internal.worker.invoke_task")
-    @patch("bookcast.internal.worker.ScriptWritingService")
+    @patch.object(worker, "invoke_task")
+    @patch.object(worker, "ScriptWritingService")
     def test_start_script_writing_success(self, mock_script_service_class, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
@@ -118,8 +119,8 @@ class TestStartScriptWriting:
 
 
 class TestStartTTS:
-    @patch("bookcast.internal.worker.invoke_task")
-    @patch("bookcast.internal.worker.tts_service")
+    @patch.object(worker, "invoke_task")
+    @patch.object(worker, "tts_service")
     def test_start_tts_success(self, tts_service, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
@@ -146,7 +147,7 @@ class TestStartTTS:
 
 
 class TestStartCreatingAudio:
-    @patch("bookcast.internal.worker.audio_service")
+    @patch.object(worker, "audio_service")
     def test_start_creating_audio_success(self, audio_service, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 

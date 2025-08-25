@@ -4,13 +4,14 @@ import pytest
 from pydub import AudioSegment
 
 from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
+from bookcast.services import audio_service
 from bookcast.services.audio_service import AudioService
 
 
 class TestAudioServiceIntegration:
     @pytest.mark.integration
-    @patch("bookcast.services.audio_service.CompletedAudioFileService")
-    @patch("bookcast.services.audio_service.TTSFileService")
+    @patch.object(audio_service, "CompletedAudioFileService")
+    @patch.object(audio_service, "TTSFileService")
     def test_generate_audio(self, mock_tts_file_service, mock_completed_audio_file_service):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_creating_audio)
         chapters = [

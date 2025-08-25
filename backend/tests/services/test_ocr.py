@@ -9,6 +9,7 @@ from PIL import Image
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, Project, ProjectStatus
+from bookcast.services import file_service, ocr_service
 from bookcast.services.ocr_service import OCRExecutor, OCROrchestrator, OCRResultEditor, OCRService
 
 
@@ -34,8 +35,8 @@ def test_ocr_orchestrator(llm):
 
 class TestOCRServiceIntegration:
     @pytest.mark.integration
-    @patch("bookcast.services.ocr_service.OCROrchestrator")
-    @patch("bookcast.services.file_service.OCRImageFileService.download_from_gcs")
+    @patch.object(ocr_service, "OCROrchestrator")
+    @patch.object(file_service.OCRImageFileService, "download_from_gcs")
     async def test_process(self, mock_download_from_gcs, mock_orchestrator_class):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_ocr)
         chapters = [
