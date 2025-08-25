@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
-from bookcast.services.project import ProjectService
+from bookcast.services.project_service import ProjectService
 
 
 def create_mock_project_service():
@@ -95,8 +95,8 @@ class TestCreateProject:
         file = BytesIO(file_content)
 
         with (
-            patch("bookcast.services.file.OCRImageFileService.write") as mock_write,
-            patch("bookcast.services.file.OCRImageFileService.upload_gcs_from_file") as mock_upload,
+            patch("bookcast.services.file_service.OCRImageFileService.write") as mock_write,
+            patch("bookcast.services.file_service.OCRImageFileService.upload_gcs_from_file") as mock_upload,
         ):
             mock_write.return_value = "/tmp/test.pdf"
 
@@ -140,7 +140,7 @@ class TestCreateDownloadArchive:
             chapter1_path.write_bytes(b"dummy audio data 1")
             chapter2_path.write_bytes(b"dummy audio data 2")
 
-            with patch("bookcast.services.file.CompletedAudioFileService.download_from_gcs") as mock_download:
+            with patch("bookcast.services.file_service.CompletedAudioFileService.download_from_gcs") as mock_download:
                 mock_download.side_effect = [str(chapter1_path), str(chapter2_path)]
 
                 zip_generator, filename = project_service_mock.create_download_archive(project_id)

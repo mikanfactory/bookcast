@@ -5,7 +5,7 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 from bookcast.entities import Chapter, Project
-from bookcast.services.file import CompletedAudioFileService, TTSFileService
+from bookcast.services.file_service import CompletedAudioFileService, TTSFileService
 
 logger = getLogger(__name__)
 

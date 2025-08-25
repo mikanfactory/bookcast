@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, ScriptWritingWorkerResult, TTSWorkerResult
-from bookcast.services.chapter import ChapterService
+from bookcast.services.chapter_service import ChapterService
 
 
 def create_mock_chapter_service():

@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from bookcast.dependencies import get_project_service
 from bookcast.entities import Project
-from bookcast.services.project import ProjectService
+from bookcast.services.project_service import ProjectService
 
 logger = getLogger(__name__)
 

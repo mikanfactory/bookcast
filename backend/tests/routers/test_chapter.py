@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from bookcast.dependencies import get_chapter_service
 from bookcast.entities import Chapter, ChapterStatus
 from bookcast.main import app
-from bookcast.services.chapter import ChapterService
+from bookcast.services.chapter_service import ChapterService
 
 
 def create_mock_chapter_service():

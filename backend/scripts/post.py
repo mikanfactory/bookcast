@@ -5,8 +5,8 @@ from google.cloud import tasks_v2
 
 from bookcast.services.db import supabase_client
 from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.chapter import ChapterService
-from bookcast.services.project import ProjectService
+from bookcast.services.chapter_service import ChapterService
+from bookcast.services.project_service import ProjectService
 
 from bookcast.config import (
     BOOKCAST_TTS_WORKER_QUEUE,

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from bookcast.dependencies import get_project_service
 from bookcast.entities import Project, ProjectStatus
 from bookcast.main import app
-from bookcast.services.project import ProjectService
+from bookcast.services.project_service import ProjectService
 
 
 def create_mock_project_service():
@@ -104,8 +104,8 @@ class TestUploadFile:
         client, project_service = client_with_mock
 
         with (
-            patch("bookcast.services.file.OCRImageFileService.write") as mock_write,
-            patch("bookcast.services.file.OCRImageFileService.upload_gcs_from_file") as mock_upload,
+            patch("bookcast.services.file_service.OCRImageFileService.write") as mock_write,
+            patch("bookcast.services.file_service.OCRImageFileService.upload_gcs_from_file") as mock_upload,
         ):
             mock_write.return_value = "/tmp/test.pdf"
 

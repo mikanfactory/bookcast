@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, OCRWorkerResult, Project
-from bookcast.services.file import OCRImageFileService
+from bookcast.services.file_service import OCRImageFileService
 
 logger = getLogger(__name__)
 

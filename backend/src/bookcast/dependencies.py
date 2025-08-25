@@ -1,7 +1,7 @@
 from bookcast.repositories import ChapterRepository, ProjectRepository
-from bookcast.services.chapter import ChapterService
+from bookcast.services.chapter_service import ChapterService
 from bookcast.services.db import supabase_client
-from bookcast.services.project import ProjectService
+from bookcast.services.project_service import ProjectService
 
 
 def get_project_service() -> ProjectService:

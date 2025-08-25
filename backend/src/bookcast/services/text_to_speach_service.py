@@ -10,7 +10,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_afte
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, Project, TTSWorkerResult
-from bookcast.services.file import TTSFileService
+from bookcast.services.file_service import TTSFileService
 
 logger = getLogger(__name__)
 

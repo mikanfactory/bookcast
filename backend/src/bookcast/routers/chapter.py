@@ -8,7 +8,7 @@ from bookcast.config import BOOKCAST_WORKER_QUEUE
 from bookcast.dependencies import get_chapter_service
 from bookcast.entities.chapter import Chapter
 from bookcast.internal.worker import invoke_task
-from bookcast.services.chapter import ChapterService
+from bookcast.services.chapter_service import ChapterService
 
 logger = logging.getLogger(__name__)
 

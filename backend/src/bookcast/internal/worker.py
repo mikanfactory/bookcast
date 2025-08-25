@@ -17,12 +17,12 @@ from bookcast.config import (
 )
 from bookcast.dependencies import get_chapter_service, get_project_service
 from bookcast.entities import ChapterStatus, ProjectStatus
-from bookcast.services.audio import AudioService
-from bookcast.services.chapter import ChapterService
-from bookcast.services.ocr import OCRService
-from bookcast.services.project import ProjectService
-from bookcast.services.script_writing import ScriptWritingService
-from bookcast.services.tts import TextToSpeechService
+from bookcast.services.audio_service import AudioService
+from bookcast.services.chapter_service import ChapterService
+from bookcast.services.ocr_service import OCRService
+from bookcast.services.project_service import ProjectService
+from bookcast.services.script_writing_service import ScriptWritingService
+from bookcast.services.text_to_speach_service import TextToSpeechService
 
 logger = logging.getLogger(__name__)
 

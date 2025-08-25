@@ -14,8 +14,8 @@ from bookcast.entities import (
     TTSWorkerResult,
 )
 from bookcast.main import app
-from bookcast.services.chapter import ChapterService
-from bookcast.services.project import ProjectService
+from bookcast.services.chapter_service import ChapterService
+from bookcast.services.project_service import ProjectService
 
 
 def create_mock_project_service():
