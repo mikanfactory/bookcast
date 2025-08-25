@@ -27,7 +27,6 @@ from bookcast.services.text_to_speach_service import TextToSpeechService
 logger = logging.getLogger(__name__)
 
 ocr_service = OCRService()
-tts_service = TextToSpeechService()
 audio_service = AudioService()
 
 router = APIRouter(
@@ -131,20 +130,26 @@ async def start_tts(
     project_service: ProjectService = Depends(get_project_service),
     chapter_service: ChapterService = Depends(get_chapter_service),
 ):
+    tts_service = TextToSpeechService(chapter_service)
+
+    logger.info(f"Starting TTS for project ID: {data.project_id}...")
+
     project = project_service.find_project(data.project_id)
     chapters = chapter_service.select_chapter_by_project_id(data.project_id)
     # if project.status != ProjectStatus.writing_script_completed:
     #     return {"status": 400}
 
+    logger.info(f"Updating project status to start TTS for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_tts)
     chapter_service.update_chapters_status(chapters, ChapterStatus.start_tts)
 
-    results = await asyncio.wait_for(
+    await asyncio.wait_for(
         tts_service.generate_audio(project, chapters),
         timeout=60 * 60,  # 60 minutes timeout
     )
+
+    logger.info(f"Updating project status to TTS completed for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.tts_completed)
-    chapter_service.update_chapter_script_file_count(chapters, results)
 
     try:
         logger.info("Invoking audio creation worker...")

@@ -49,7 +49,6 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 voice_names = [
     "Alnilam",
     # "Autonoe",
-
     # "Zephyr",
     # "Puck",
     # "Charon",
@@ -85,4 +84,3 @@ voice_names = [
 for voice_name in voice_names:
     print(f"Generating TTS for voice: {voice_name}")
     generate_tts(voice_name)
-

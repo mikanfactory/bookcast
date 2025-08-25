@@ -1,8 +1,8 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus, TTSWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
 from bookcast.services import text_to_speach_service
 from bookcast.services.text_to_speach_service import TextToSpeechService
 
@@ -30,11 +30,12 @@ class TestTextToSpeechServiceIntegration:
         mock_tts_file_service.write.return_value = "/fake/path/audio.wav"
         mock_tts_file_service.upload_gcs_from_file.return_value = None
 
-        tts_service = TextToSpeechService()
-        results = await tts_service.generate_audio(project, chapters)
+        mock_chapter_service = MagicMock()
+        tts_service = TextToSpeechService(mock_chapter_service)
+        await tts_service.generate_audio(project, chapters)
 
-        assert isinstance(results, list)
-        assert isinstance(results[0], TTSWorkerResult)
+        assert chapters[0].status == ChapterStatus.tts_completed
+        assert chapters[0].script_file_count == 1
 
         mock_tts_file_service.write.assert_called_once_with("test_sample.pdf", 1, 0, b"fake_audio_data")
         mock_tts_file_service.upload_gcs_from_file.assert_called_once_with("/fake/path/audio.wav")

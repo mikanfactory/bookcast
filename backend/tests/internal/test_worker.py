@@ -10,7 +10,6 @@ from bookcast.entities import (
     OCRWorkerResult,
     Project,
     ProjectStatus,
-    TTSWorkerResult,
 )
 from bookcast.internal import worker
 from bookcast.main import app
@@ -102,7 +101,6 @@ class TestStartScriptWriting:
 
         project_service.find_project.return_value.status = ProjectStatus.ocr_completed
 
-        # Mock the ScriptWritingService instance
         mock_script_service_instance = AsyncMock()
         mock_script_service_class.return_value = mock_script_service_instance
 
@@ -120,18 +118,15 @@ class TestStartScriptWriting:
 
 class TestStartTTS:
     @patch.object(worker, "invoke_task")
-    @patch.object(worker, "tts_service")
-    def test_start_tts_success(self, tts_service, invoke_task, client_with_mock):
+    @patch.object(worker, "TextToSpeechService")
+    def test_start_tts_success(self, mock_tts_service_class, invoke_task, client_with_mock):
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.writing_script_completed
 
-        tts_service.generate_audio = AsyncMock(
-            return_value=[
-                TTSWorkerResult(chapter_id=1, index=3),
-                TTSWorkerResult(chapter_id=2, index=2),
-            ]
-        )
+        mock_tts_service_instance = AsyncMock()
+        mock_tts_service_class.return_value = mock_tts_service_instance
+        mock_tts_service_instance.generate_audio.return_value = None
 
         response = client.post("/internal/api/v1/workers/start_tts", json={"project_id": 1})
 
@@ -140,9 +135,8 @@ class TestStartTTS:
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
-        tts_service.generate_audio.assert_called_once()
+        mock_tts_service_instance.generate_audio.assert_called_once()
         project_service.update_project_status.assert_called()
-        chapter_service.update_chapter_script_file_count.assert_called_once()
         invoke_task.assert_called_once_with(1, "start_creating_audio", "bookcast-worker")
 
 

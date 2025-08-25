@@ -1,6 +1,6 @@
 from .chapter import Chapter, ChapterStatus
 from .project import Project, ProjectStatus
-from .worker import OCRWorkerResult, TTSWorkerResult
+from .worker import OCRWorkerResult
 
 __all__ = [
     "Chapter",
@@ -8,5 +8,4 @@ __all__ = [
     "Project",
     "ProjectStatus",
     "OCRWorkerResult",
-    "TTSWorkerResult",
 ]

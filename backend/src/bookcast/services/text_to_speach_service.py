@@ -9,16 +9,17 @@ from langchain.text_splitter import CharacterTextSplitter
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from bookcast.config import GEMINI_API_KEY
-from bookcast.entities import Chapter, Project, TTSWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, Project
 from bookcast.services.file_service import TTSFileService
 
 logger = getLogger(__name__)
 
 
 class TextToSpeechService:
-    def __init__(self):
+    def __init__(self, chapter_service):
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         self.semaphore = asyncio.Semaphore(3)
+        self.chapter_service = chapter_service
 
     @staticmethod
     def split_script(source_script: str) -> list[str]:
@@ -71,7 +72,7 @@ class TextToSpeechService:
         retry=retry_if_exception_type((ServerError, AttributeError)),
         before_sleep=before_sleep_log(logger, logging.WARNING),
     )
-    async def _generate(self, project: Project, script: str, chapter: Chapter, index: int) -> TTSWorkerResult:
+    async def _generate(self, project: Project, script: str, chapter: Chapter, index: int) -> None:
         async with self.semaphore:
             logger.info(f"Generating audio for chapter: {str(chapter)}, index: {index}")
             data = await self._invoke(script)
@@ -79,23 +80,32 @@ class TextToSpeechService:
         logger.info(f"Saving audio for chapter {chapter.chapter_number}, index {index}.")
         source_file_path = TTSFileService.write(project.filename, chapter.chapter_number, index, data)
         TTSFileService.upload_gcs_from_file(source_file_path)
-        return TTSWorkerResult(chapter_id=chapter.id, index=index)
 
-    async def _generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
+    async def _generate_chapter_audio(self, project: Project, chapter: Chapter) -> None:
+        chunked_scripts = self.split_script(chapter.script)
+        logger.info(f"Splitting script for chapter {chapter.chapter_number} into {len(chunked_scripts)} chunks.")
+
         tasks = []
+        for i, script in enumerate(chunked_scripts):
+            tasks.append(self._generate(project, script, chapter, i))
+
+        await asyncio.gather(*tasks)
+
+        chapter.status = ChapterStatus.tts_completed
+        chapter.script_file_count = len(chunked_scripts)
+        self.chapter_service.update(chapter)
+        logger.info(
+            f"Updated chapter {chapter.chapter_number} status to tts_completed with {len(chunked_scripts)} audio files"
+        )
+
+    async def _generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
         for chapter in chapters:
-            chunked_scripts = self.split_script(chapter.script)
-            logger.info(f"Splitting script for chapter {chapter.chapter_number} into {len(chunked_scripts)} chunks.")
+            if chapter.status == ChapterStatus.start_tts:
+                await self._generate_chapter_audio(project, chapter)
+            else:
+                logger.info(f"Skipping audio generation for chapter (already completed): {str(chapter)}")
 
-            for i, script in enumerate(chunked_scripts):
-                tasks.append(self._generate(project, script, chapter, i))
-
-        results = await asyncio.gather(*tasks)
-        return results
-
-    async def generate_audio(self, project: Project, chapters: list[Chapter]) -> list[TTSWorkerResult]:
+    async def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info("Starting audio generation for chapters.")
-        results = await self._generate_audio(project, chapters)
+        await self._generate_audio(project, chapters)
         logger.info("Audio generation completed successfully.")
-
-        return results

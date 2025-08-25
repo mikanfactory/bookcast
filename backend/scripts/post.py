@@ -13,7 +13,7 @@ from bookcast.config import (
     BOOKCAST_WORKER_QUEUE,
     GOOGLE_CLOUD_LOCATION,
     GOOGLE_CLOUD_PROJECT,
-    CLOUD_RUN_SERVICE_URL
+    CLOUD_RUN_SERVICE_URL,
 )
 
 chapter_repository = ChapterRepository(supabase_client)

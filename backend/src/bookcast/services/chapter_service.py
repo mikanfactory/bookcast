@@ -1,4 +1,4 @@
-from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult, TTSWorkerResult
+from bookcast.entities import Chapter, ChapterStatus, OCRWorkerResult
 from bookcast.repositories import ChapterRepository, ProjectRepository
 
 
@@ -36,21 +36,6 @@ class ChapterService:
 
             chapter.status = ChapterStatus.ocr_completed
             chapter.extracted_text = "\n".join(acc)
-            self.chapter_repo.update(chapter)
-
-        return chapters
-
-    def update_chapter_script_file_count(
-        self, chapters: list[Chapter], results: list[TTSWorkerResult]
-    ) -> list[Chapter]:
-        results.sort(key=lambda x: x.index)
-
-        for chapter in chapters:
-            for result in results:
-                if result.chapter_id == chapter.id:
-                    chapter.script_file_count = result.index + 1
-
-            chapter.status = ChapterStatus.tts_completed
             self.chapter_repo.update(chapter)
 
         return chapters
