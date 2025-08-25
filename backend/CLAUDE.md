@@ -9,8 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Install dev dependencies**: `uv sync --dev`
 - **Run tests**: `uv run pytest` or `make test`
 - **Run integration tests**: `uv run pytest -m integration` or `make test/integration`
-- **Code formatting**: `ruff format` or `make format`
-- **Linting**: `ruff check` or `make lint`
+- **Code formatting**: `uv run ruff format` or `make format`
+- **Linting**: `uv run ruff check` or `make lint`
 - **Start local database**: `make db/start`
 - **Reset local database**: `make db/clean`
 - **Deploy server**: `make deploy/server`

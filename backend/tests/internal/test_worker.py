@@ -83,7 +83,11 @@ class TestStartOCR:
         response = client.post("/internal/api/v1/workers/start_ocr", json={"project_id": 1})
 
         assert response.status_code == 200
-        assert response.json() == {"status": 200}
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert response_data["message"] == "OCR processing completed successfully"
+        assert response_data["data"]["project_id"] == 1
+        assert response_data["data"]["project_status"] == ProjectStatus.ocr_completed.value
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
@@ -106,7 +110,11 @@ class TestStartScriptWriting:
         response = client.post("/internal/api/v1/workers/start_script_writing", json={"project_id": 1})
 
         assert response.status_code == 200
-        assert response.json() == {"status": 200}
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert response_data["message"] == "Script writing completed successfully"
+        assert response_data["data"]["project_id"] == 1
+        assert response_data["data"]["project_status"] == ProjectStatus.writing_script_completed.value
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
@@ -130,7 +138,11 @@ class TestStartTTS:
         response = client.post("/internal/api/v1/workers/start_tts", json={"project_id": 1})
 
         assert response.status_code == 200
-        assert response.json() == {"status": 200}
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert response_data["message"] == "TTS processing completed successfully"
+        assert response_data["data"]["project_id"] == 1
+        assert response_data["data"]["project_status"] == ProjectStatus.tts_completed.value
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
@@ -149,7 +161,11 @@ class TestStartCreatingAudio:
         response = client.post("/internal/api/v1/workers/start_creating_audio", json={"project_id": 1})
 
         assert response.status_code == 200
-        assert response.json() == {"status": 200}
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert response_data["message"] == "Audio creation completed successfully"
+        assert response_data["data"]["project_id"] == 1
+        assert response_data["data"]["project_status"] == ProjectStatus.creating_audio_completed.value
 
         project_service.find_project.assert_called_once_with(1)
         chapter_service.select_chapter_by_project_id.assert_called_once_with(1)
