@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -45,19 +44,20 @@ async def create_chapters(
         )
         for chapter in project.chapters
     ]
-    try:
-        result = chapter_service.create_chapters(chapters)
-        if len(result) > 0:
-            logger.info(f"Chapters created successfully for project {project.project_id}")
-            return {"message": "Chapters created successfully", "chapters": result}
-    except Exception as e:
-        logger.error(f"Error creating chapters for project {project.project_id}: {e}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to create chapters for project")
+    result = chapter_service.create_chapters(chapters)
+    if len(result) == 0:
+        logger.warning(f"No chapters were created for project {project.project_id}")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "success": False,
+                "message": "No chapters were created",
+                "error_code": "NO_CHAPTERS_CREATED",
+            },
+        )
 
-    try:
-        logger.info("Invoking OCR worker for project %s", project.project_id)
-        invoke_task(project.project_id, "start_ocr", BOOKCAST_WORKER_QUEUE)
-    except Exception as e:
-        logger.error(traceback.print_exc())
-        raise HTTPException(500, detail=f"Failed to invoke worker: {str(e)}")
+    logger.info(f"Chapters created successfully for project {project.project_id}")
+    logger.info(f"Invoking OCR worker for project {project.project_id}")
+    result = invoke_task(project.project_id, "start_ocr", BOOKCAST_WORKER_QUEUE)
+
+    return {"success": True, "message": "Chapters created and OCR worker invoked", "data": result}

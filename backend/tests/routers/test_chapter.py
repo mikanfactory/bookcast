@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,6 +44,25 @@ def client_with_mock():
         ),
     ]
 
+    chapter_service.chapter_repo.bulk_create.return_value = [
+        Chapter(
+            id=1,
+            project_id=1,
+            chapter_number=1,
+            start_page=1,
+            end_page=10,
+            status=ChapterStatus.not_started,
+        ),
+        Chapter(
+            id=2,
+            project_id=1,
+            chapter_number=2,
+            start_page=11,
+            end_page=20,
+            status=ChapterStatus.not_started,
+        ),
+    ]
+
     app.dependency_overrides[get_chapter_service] = lambda: chapter_service
 
     client = TestClient(app)
@@ -53,8 +72,11 @@ def client_with_mock():
 
 
 class TestCreateChapters:
-    def test_create_chapters(self, client_with_mock):
+    @patch("bookcast.routers.chapter.invoke_task")
+    def test_create_chapters(self, mock_invoke_task, client_with_mock):
         client, chapter_service = client_with_mock
+        mock_invoke_task.return_value = {"task_id": "mock-task-id"}
+
         json_value = {
             "project_id": 1,
             "chapters": [
@@ -65,3 +87,6 @@ class TestCreateChapters:
 
         response = client.post("/api/v1/chapters/create_chapters", json=json_value)
         assert response.status_code == 200
+
+        mock_invoke_task.assert_called_once_with(1, "start_ocr", "bookcast-worker")
+        chapter_service.chapter_repo.bulk_create.assert_called_once()

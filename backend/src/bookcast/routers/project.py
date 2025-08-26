@@ -26,9 +26,17 @@ async def index(project_service: ProjectService = Depends(get_project_service)) 
 @router.get("/{project_id}")
 async def show(project_id: int, project_service: ProjectService = Depends(get_project_service)) -> Project:
     results = project_service.find_project(project_id)
-    if results:
-        return results
-    raise HTTPException(status_code=404, detail="Project not found")
+    if not results:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "success": False,
+                "message": "Project not found",
+                "error_code": "PROJECT_NOT_FOUND",
+            },
+        )
+
+    return results
 
 
 @router.post("/upload_file")
@@ -37,28 +45,41 @@ async def upload_file(file: UploadFile, project_service: ProjectService = Depend
     logger.info(f"Received file upload: {fname}")
     try:
         results = project_service.create_project(fname, file.file)
-    except Exception as e:
-        logger.error(f"Error creating project from file {fname}: {e}")
+    except RuntimeError as e:
+        logger.error(f"Runtime error creating project from file {fname}: {e}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to create project from file")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "success": False,
+                "message": str(e),
+                "error_code": "PROJECT_CREATION_FAILED",
+            },
+        )
 
     logger.info(f"Project created with ID: {results.id} for file: {fname}")
-    if results:
-        return results
-    raise HTTPException(status_code=500, detail="Failed to create project from file")
+    return results
 
 
 @router.get("/{project_id}/download")
 async def download_project(project_id: int, project_service: ProjectService = Depends(get_project_service)):
     logger.info(f"Creating download archive for project ID: {project_id}")
+
     try:
-        zip_generator, filename = project_service.create_download_archive(project_id)
-        return StreamingResponse(
-            zip_generator,
-            media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"},
+        project = project_service.find_project(project_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "success": False,
+                "message": "Project not found",
+                "error_code": "PROJECT_NOT_FOUND",
+            },
         )
-    except Exception as e:
-        logger.error(f"Error creating download archive for project {project_id}: {e}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to create download archive")
+
+    zip_generator, filename = project_service.create_download_archive(project)
+    return StreamingResponse(
+        zip_generator,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"},
+    )

@@ -107,7 +107,6 @@ class TestCreateProject:
 class TestCreateDownloadArchive:
     @patch.object(file_service.CompletedAudioFileService, "download_from_gcs")
     def test_create_download_archive_success(self, mock_download, project_service_mock):
-        project_id = 1
         project = Project(id=1, filename="test.pdf", status=ProjectStatus.creating_audio_completed)
         chapters = [
             Chapter(
@@ -128,7 +127,6 @@ class TestCreateDownloadArchive:
             ),
         ]
 
-        project_service_mock.project_repo.find.return_value = project
         project_service_mock.chapter_repo.select_chapter_by_project_id.return_value = chapters
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -140,7 +138,7 @@ class TestCreateDownloadArchive:
 
             mock_download.side_effect = [str(chapter1_path), str(chapter2_path)]
 
-            zip_generator, filename = project_service_mock.create_download_archive(project_id)
+            zip_generator, filename = project_service_mock.create_download_archive(project)
 
             assert filename == "test.zip"
             assert zip_generator is not None
@@ -158,5 +156,4 @@ class TestCreateDownloadArchive:
                 assert zip_file.read("chapter_001.wav") == b"dummy audio data 1"
                 assert zip_file.read("chapter_002.wav") == b"dummy audio data 2"
 
-            project_service_mock.project_repo.find.assert_called_once_with(project_id)
-            project_service_mock.chapter_repo.select_chapter_by_project_id.assert_called_once_with(project_id)
+            project_service_mock.chapter_repo.select_chapter_by_project_id.assert_called_once_with(project.id)

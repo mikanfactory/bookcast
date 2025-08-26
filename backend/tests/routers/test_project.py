@@ -140,4 +140,5 @@ class TestDownloadProject:
         assert "test_audio.zip" in response.headers["content-disposition"]
         assert response.content == b"fake zip content"
 
-        mock_create_archive.assert_called_once_with(1)
+        expected_project = Project(id=1, filename="test1.pdf", status=ProjectStatus.not_started)
+        mock_create_archive.assert_called_once_with(expected_project)

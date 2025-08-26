@@ -32,10 +32,10 @@ class ProjectService:
     def fetch_all_projects(self) -> list[Project]:
         return self.project_repo.select_all()
 
-    def find_project(self, project_id: int) -> Project | None:
+    def find_project(self, project_id: int) -> Project:
         return self.project_repo.find(project_id)
 
-    def create_project(self, filename: str, file: BinaryIO) -> Project | None:
+    def create_project(self, filename: str, file: BinaryIO) -> Project:
         file_content = file.read()
         source_file_path = OCRImageFileService.write(filename, file_content)
         OCRImageFileService.upload_gcs_from_file(source_file_path)
@@ -48,11 +48,7 @@ class ProjectService:
         self.project_repo.update(project)
         return project
 
-    def create_download_archive(self, project_id: int) -> tuple[Generator[bytes, None, None], str]:
-        project = self.project_repo.find(project_id)
-        if not project:
-            raise ValueError(f"Project with ID {project_id} not found")
-
-        chapters = self.chapter_repo.select_chapter_by_project_id(project_id)
+    def create_download_archive(self, project: Project) -> tuple[Generator[bytes, None, None], str]:
+        chapters = self.chapter_repo.select_chapter_by_project_id(project.id)
         filename = f"{pathlib.Path(project.filename).stem}.zip"
         return generate_zip(project, chapters), filename
