@@ -16,8 +16,8 @@ class TestChapterRepository:
         chapter = chapter_repository.find(cs[0].id)
         assert chapter.project_id is not None
 
-        chapter = chapter_repository.find(100)
-        assert chapter is None
+        with pytest.raises(ValueError, match="Chapter id 100 not found"):
+            chapter_repository.find(100)
 
     @pytest.mark.integration
     def test_select_by_project_id(self, chapter_repository, completed_project):

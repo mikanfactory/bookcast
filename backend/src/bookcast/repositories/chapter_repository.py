@@ -5,11 +5,11 @@ class ChapterRepository:
     def __init__(self, db):
         self.db = db
 
-    def find(self, chapter_id: int) -> Chapter | None:
+    def find(self, chapter_id: int) -> Chapter:
         response = self.db.table("chapter").select("*").eq("id", chapter_id).execute()
         if len(response.data):
             return Chapter(**response.data[0])
-        return None
+        raise ValueError(f"Chapter id {chapter_id} not found")
 
     def select_chapter_by_project_id(self, project_id: int) -> list[Chapter]:
         response = self.db.table("chapter").select("*").eq("project_id", project_id).execute()
@@ -17,12 +17,12 @@ class ChapterRepository:
             return [Chapter(**item) for item in response.data]
         return []
 
-    def create(self, chapter: Chapter) -> Chapter | None:
+    def create(self, chapter: Chapter) -> Chapter:
         exclude_fields = {"id", "extracted_text", "created_at", "updated_at"}
         response = self.db.table("chapter").insert(chapter.model_dump(exclude=exclude_fields)).execute()
         if len(response.data):
             return Chapter(**response.data[0])
-        return None
+        raise RuntimeError(f"Failed to create chapter: {chapter}, response: {response}")
 
     def bulk_create(self, chapters: list[Chapter]) -> list[Chapter]:
         exclude_fields = {"id", "extracted_text", "created_at", "updated_at"}
@@ -32,15 +32,11 @@ class ChapterRepository:
             return [Chapter(**item) for item in response.data]
         return []
 
-    def update(self, chapter: Chapter) -> Chapter | None:
+    def update(self, chapter: Chapter) -> Chapter:
         exclude_fields = {"id", "created_at", "updated_at"}
         response = (
             self.db.table("chapter").update(chapter.model_dump(exclude=exclude_fields)).eq("id", chapter.id).execute()
         )
         if len(response.data):
             return Chapter(**response.data[0])
-        return None
-
-    def delete(self, chapter_id: int):
-        response = self.db.table("chapter").delete().eq("id", chapter_id).execute()
-        return response
+        raise RuntimeError(f"Failed to update chapter: {chapter}, response: {response}")

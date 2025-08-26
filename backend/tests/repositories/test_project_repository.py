@@ -16,8 +16,8 @@ class TestProjectRepository:
         project = project_repository.find(p.id)
         assert project.filename
 
-        project = project_repository.find(999)
-        assert project is None
+        with pytest.raises(ValueError, match="Project id 999 not found"):
+            project_repository.find(999)
 
     @pytest.mark.integration
     def test_create(self, project_repository):
