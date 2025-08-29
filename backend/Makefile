@@ -38,7 +38,7 @@ deploy/server:
 		--set-env-vars=ENV=production \
 		--region=$(GOOGLE_CLOUD_LOCATION) \
 		--timeout=60m \
-		--cpu=4 \
-		--memory=8Gi \
+		--cpu=2 \
+		--memory=4Gi \
 		--project=$(GOOGLE_CLOUD_PROJECT) && \
 	gcloud run services --region $(GOOGLE_CLOUD_LOCATION) update-traffic bookcast-server --to-latest
