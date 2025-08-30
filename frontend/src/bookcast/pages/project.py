@@ -40,6 +40,7 @@ def process_uploaded_file(uploaded_file: io.BytesIO):
             st.success(f"File '{uploaded_file.name}' uploaded successfully!")
         else:
             logger.error(f"Failed to save file: {file_name}")
+            logger.error(resp.content)
             st.error("Error Uploading file")
 
     if resp.ok:

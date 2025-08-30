@@ -27,6 +27,7 @@ COPY resources/ ./resources/
 COPY src/bookcast ./src/bookcast
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app/src"
 
-EXPOSE 8080
-CMD ["fastapi", "run", "src/bookcast/main.py", "--port", "8080"]
+EXPOSE 8000
+CMD ["hypercorn", "--bind", "0.0.0.0:8000", "src/bookcast/main:app"]

@@ -192,6 +192,7 @@ def render_validation_section(project: ProjectViewModel):
                 st.switch_page(Rooter.podcast_page())
             else:
                 st.error("章の保存に失敗しました。サーバーエラーが発生しました。")
+                st.error(resp.text)
                 logger.error(f"Failed to save chapters: {resp.text}")
         except Exception as e:
             st.error(str(e))
