@@ -10,5 +10,10 @@
       "Bash(uv run ruff *)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "context7",
+    "jetbrains",
+    "brave-search"
+  ]
 }
