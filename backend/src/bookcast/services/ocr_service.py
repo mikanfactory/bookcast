@@ -3,11 +3,13 @@ import base64
 import io
 import pathlib
 from logging import getLogger
+from typing import Literal
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 from pdf2image import convert_from_path
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field
@@ -39,7 +41,7 @@ class EvaluateResult(BaseModel):
     calibration_reason: str = Field(default="", description="校正理由")
 
 
-class OCRExecutor:
+class OCRChain:
     def __init__(self, llm):
         self.llm = llm
 
@@ -77,8 +79,12 @@ class OCRExecutor:
         chain = message | self.llm.with_structured_output(OCRResult)
         return await chain.ainvoke({})
 
+    async def __call__(self, state: State) -> Command[Literal["calibrate_result"]]:
+        result: OCRResult = await self.run(state)
+        return Command(update={"extracted_string": result.extracted_string}, goto="calibrate_result")
 
-class OCRResultEditor:
+
+class CalibrationChain:
     def __init__(self, llm):
         self.llm = llm
 
@@ -120,34 +126,30 @@ OCR結果: {extracted_string}
         chain = message | self.llm.with_structured_output(EvaluateResult)
         return await chain.ainvoke({"extracted_string": state.extracted_string})
 
+    async def __call__(self, state: State) -> Command:
+        result: EvaluateResult = await self.run(state)
+        if result.is_valid:
+            return Command(update={"is_valid": True})
+        else:
+            return Command(
+                update={
+                    "is_valid": False,
+                    "calibrated_string": result.calibrated_string,
+                }
+            )
 
-class OCROrchestrator:
+
+class OCRAgent:
     def __init__(self, llm):
         self.llm = llm
-        self.ocr_agent = OCRExecutor(llm)
-        self.evaluator = OCRResultEditor(llm)
+        self.ocr_chain = OCRChain(llm)
+        self.calibration_chain = CalibrationChain(llm)
         self.graph = self._create_graph()
-
-    async def _execute_ocr(self, state: State) -> dict:
-        result: OCRResult = await self.ocr_agent.run(state)
-        return {
-            "extracted_string": result.extracted_string,
-        }
-
-    async def _calibrate_result(self, state: State) -> dict:
-        result: EvaluateResult = await self.evaluator.run(state)
-        if result.is_valid:
-            return {"is_valid": True}
-        else:
-            return {
-                "is_valid": False,
-                "calibrated_string": result.calibrated_string,
-            }
 
     def _create_graph(self) -> CompiledStateGraph:
         graph = StateGraph(State)
-        graph.add_node("execute_ocr", self._execute_ocr)
-        graph.add_node("calibrate_result", self._calibrate_result)
+        graph.add_node("execute_ocr", self.ocr_chain)
+        graph.add_node("calibrate_result", self.calibration_chain)
 
         graph.set_entry_point("execute_ocr")
         graph.add_edge("execute_ocr", "calibrate_result")
@@ -185,7 +187,7 @@ class OCRService:
     async def _extract(self, page_number: int, image: Image.Image) -> str:
         base64_image = self.image_to_base64_png(image)
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
-        ocr_agent = OCROrchestrator(llm)
+        ocr_agent = OCRAgent(llm)
         response = await ocr_agent.run(page_number, base64_image)
         return response
 
@@ -213,11 +215,7 @@ class OCRService:
         for chapter in chapters:
             if chapter.status == ChapterStatus.start_ocr:
                 images = convert_from_path(
-                    book_path,
-                    first_page=chapter.start_page,
-                    last_page=chapter.end_page - 1,
-                    dpi=150,
-                    fmt='RGB'
+                    book_path, first_page=chapter.start_page, last_page=chapter.end_page - 1, dpi=150, fmt="RGB"
                 )
                 pages = [Page(page_number=chapter.start_page + i, image=images[i]) for i in range(len(images))]
                 await self._extract_chapter_text(project, chapter, pages)
