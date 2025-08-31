@@ -7,7 +7,8 @@
       "Bash(make format:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run ruff format:*)",
-      "Bash(uv run ruff *)"
+      "Bash(uv run ruff *)",
+      "Bash(uv run ruff check:*)"
     ],
     "deny": []
   },
