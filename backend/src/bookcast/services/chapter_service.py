@@ -25,7 +25,9 @@ class ChapterService:
 
         return chapters
 
-    def update_chapters_status_by_condition(self, chapters: list[Chapter], before: ChapterStatus, after: ChapterStatus) -> list[Chapter]:
+    def update_chapters_status_by_condition(
+        self, chapters: list[Chapter], before: ChapterStatus, after: ChapterStatus
+    ) -> list[Chapter]:
         for chapter in chapters:
             if chapter.status == before:
                 chapter.status = after

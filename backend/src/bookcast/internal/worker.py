@@ -143,7 +143,9 @@ async def start_script_writing(
 
     logger.info(f"Updating project status to start writing script for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_writing_script)
-    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.ocr_completed, ChapterStatus.start_writing_script)
+    chapter_service.update_chapters_status_by_condition(
+        chapters, ChapterStatus.ocr_completed, ChapterStatus.start_writing_script
+    )
 
     start_time = time.time()
     await script_writing_service.process(project, chapters)
@@ -198,7 +200,9 @@ async def start_tts(
 
     logger.info(f"Updating project status to start TTS for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_tts)
-    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.writing_script_completed, ChapterStatus.start_tts)
+    chapter_service.update_chapters_status_by_condition(
+        chapters, ChapterStatus.writing_script_completed, ChapterStatus.start_tts
+    )
 
     start_time = time.time()
     await asyncio.wait_for(
@@ -254,7 +258,9 @@ async def start_creating_audio(
         )
 
     project_service.update_project_status(project, ProjectStatus.start_creating_audio)
-    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.tts_completed, ChapterStatus.start_creating_audio)
+    chapter_service.update_chapters_status_by_condition(
+        chapters, ChapterStatus.tts_completed, ChapterStatus.start_creating_audio
+    )
 
     start_time = time.time()
     audio_service.generate_audio(project, chapters)
