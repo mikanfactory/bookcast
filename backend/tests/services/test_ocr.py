@@ -10,7 +10,7 @@ from PIL import Image
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, ChapterStatus, Project, ProjectStatus
 from bookcast.services import file_service, ocr_service
-from bookcast.services.ocr_service import CalibrationChain, OCRAgent, OCRChain, OCRService
+from bookcast.services.ocr_service import OCRService
 
 
 @pytest.fixture
@@ -18,35 +18,38 @@ def llm():
     return ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
 
 
-def test_ocr_chain(llm):
-    ocr_chain = OCRChain(llm)
-    assert ocr_chain
+@pytest.mark.asyncio
+@patch.object(ocr_service, "ocr_workflow")
+async def test_ocr_service_extract(mock_ocr_workflow):
+    mock_ocr_workflow.ainvoke = AsyncMock(return_value="Extracted text")
 
+    mock_chapter_service = MagicMock()
+    service = OCRService(mock_chapter_service)
 
-def test_calibration_chain(llm):
-    calibration_chain = CalibrationChain(llm)
-    assert calibration_chain
+    test_image = Image.new("RGB", (100, 100), color="red")
 
+    result = await service._extract(test_image)
 
-def test_ocr_agent(llm):
-    agent = OCRAgent(llm)
-    assert agent
+    assert result == "Extracted text"
+    assert mock_ocr_workflow.ainvoke.called
+
+    mock_ocr_workflow.ainvoke.assert_called_once()
+    args, kwargs = mock_ocr_workflow.ainvoke.call_args
+    assert kwargs["config"]["run_name"] == "OCRAgent"
 
 
 class TestOCRServiceIntegration:
     @pytest.mark.integration
-    @patch.object(ocr_service, "OCRAgent")
+    @patch.object(ocr_service, "ocr_workflow")
     @patch.object(file_service.OCRImageFileService, "download_from_gcs")
-    async def test_process(self, mock_download_from_gcs, mock_agent_class):
+    async def test_process(self, mock_download_from_gcs, mock_ocr_workflow):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_ocr)
         chapters = [
             Chapter(id=1, project_id=1, chapter_number=1, start_page=1, end_page=3, status=ChapterStatus.start_ocr),
             Chapter(id=2, project_id=1, chapter_number=2, start_page=4, end_page=5, status=ChapterStatus.start_ocr),
         ]
 
-        mock_agent = AsyncMock()
-        mock_agent_class.return_value = mock_agent
-        mock_agent.run.return_value = "Extracted text from page"
+        mock_ocr_workflow.ainvoke = AsyncMock(return_value="Extracted text from page")
 
         mock_chapter_service = MagicMock()
         ocr_service_instance = OCRService(mock_chapter_service)
@@ -56,9 +59,7 @@ class TestOCRServiceIntegration:
 
         await ocr_service_instance.process(project, chapters)
 
-        # OCRAgent should be instantiated for each page
-        assert mock_agent_class.call_count == 3
-        assert mock_agent.run.call_count == 3
+        assert mock_ocr_workflow.ainvoke.call_count == 3
         assert mock_chapter_service.update.call_count == 2
 
     def test_image_to_base64_png(self):
