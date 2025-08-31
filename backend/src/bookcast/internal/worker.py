@@ -55,7 +55,7 @@ def invoke_task(project_id: int, fn_name: str, queue: str) -> dict:
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(task_payload).encode(),
         },
-        "dispatch_deadline": {"seconds": 60 * 60},  # 60 minutes
+        "dispatch_deadline": {"seconds": 60 * 30},  # 30 minutes
     }
     response = client.create_task(request={"parent": parent, "task": task})
     return {"task_name": response.name, "status": "queued"}
@@ -85,7 +85,7 @@ async def start_ocr(
 
     logger.info(f"Updating project status to start OCR for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_ocr)
-    chapter_service.update_chapters_status(chapters, ChapterStatus.start_ocr)
+    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.not_started, ChapterStatus.start_ocr)
 
     start_time = time.time()
     await ocr_service.process(project, chapters)
@@ -143,7 +143,7 @@ async def start_script_writing(
 
     logger.info(f"Updating project status to start writing script for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_writing_script)
-    chapter_service.update_chapters_status(chapters, ChapterStatus.start_writing_script)
+    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.ocr_completed, ChapterStatus.start_writing_script)
 
     start_time = time.time()
     await script_writing_service.process(project, chapters)
@@ -198,7 +198,7 @@ async def start_tts(
 
     logger.info(f"Updating project status to start TTS for project ID: {data.project_id}...")
     project_service.update_project_status(project, ProjectStatus.start_tts)
-    chapter_service.update_chapters_status(chapters, ChapterStatus.start_tts)
+    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.writing_script_completed, ChapterStatus.start_tts)
 
     start_time = time.time()
     await asyncio.wait_for(
@@ -254,7 +254,7 @@ async def start_creating_audio(
         )
 
     project_service.update_project_status(project, ProjectStatus.start_creating_audio)
-    chapter_service.update_chapters_status(chapters, ChapterStatus.start_creating_audio)
+    chapter_service.update_chapters_status_by_condition(chapters, ChapterStatus.tts_completed, ChapterStatus.start_creating_audio)
 
     start_time = time.time()
     audio_service.generate_audio(project, chapters)

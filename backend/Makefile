@@ -39,7 +39,7 @@ deploy/server:
 		--region=$(GOOGLE_CLOUD_LOCATION) \
 		--timeout=60m \
 		--cpu=2 \
-		--memory=8Gi \
+		--memory=4Gi \
 		--use-http2 \
 		--project=$(GOOGLE_CLOUD_PROJECT) && \
 	gcloud run services --region $(GOOGLE_CLOUD_LOCATION) update-traffic bookcast-server --to-latest

@@ -91,7 +91,7 @@ class PodcastScriptWriter:
 - 本文のみを出力してください。オープニングとエンディングは別で処理します。
 - フィードバックがある場合は、それに注意して台本を作成してください。
 - 2人の会話形式で台本を書いてください。
-- 1人は教授（Speaker1）、もう1人は学生（）です。
+- 1人は教授（Speaker1）、もう1人は学生（Speaker2）です。
 - 教授はトピックに関する深い知識を持っており、聞き手は基礎知識を持っていますが、詳しくは知りません。
 - 教授が流れを作りつつ、学生のするどい質問を交えながら、トピックを深掘りしていく形にしてください。
 - 出力の形式は下記のようにしてください。
@@ -103,7 +103,7 @@ Speaker2: 本当ですね。ちょっと暑いくらいですね。
             system_prompt += "フィードバック: {feedback_messages}"
 
         formated_topics = _format_topics(state.topics)
-        prompt_text = f"トピック: {formated_topics}文章: {{source_text}}"
+        prompt_text = f"トピック: {formated_topics}\n文章: {{source_text}}"
 
         message = ChatPromptTemplate(
             [

@@ -210,10 +210,16 @@ class OCRService:
         logger.info(f"OCR completed for chapter: {str(chapter)}")
 
     async def _process(self, project: Project, chapters: list[Chapter], book_path: pathlib.Path):
-        images = convert_from_path(book_path)
         for chapter in chapters:
             if chapter.status == ChapterStatus.start_ocr:
-                pages = [Page(page_number=i, image=images[i - 1]) for i in range(chapter.start_page, chapter.end_page)]
+                images = convert_from_path(
+                    book_path,
+                    first_page=chapter.start_page,
+                    last_page=chapter.end_page - 1,
+                    dpi=150,
+                    fmt='RGB'
+                )
+                pages = [Page(page_number=chapter.start_page + i, image=images[i]) for i in range(len(images))]
                 await self._extract_chapter_text(project, chapter, pages)
             else:
                 logger.info(f"Skipping OCR for chapter (already completed): {str(chapter)}")

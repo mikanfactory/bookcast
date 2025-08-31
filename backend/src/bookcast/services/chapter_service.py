@@ -24,3 +24,11 @@ class ChapterService:
             self.chapter_repo.update(chapter)
 
         return chapters
+
+    def update_chapters_status_by_condition(self, chapters: list[Chapter], before: ChapterStatus, after: ChapterStatus) -> list[Chapter]:
+        for chapter in chapters:
+            if chapter.status == before:
+                chapter.status = after
+                self.chapter_repo.update(chapter)
+
+        return chapters
