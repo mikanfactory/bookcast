@@ -1,14 +1,11 @@
 import asyncio
-import operator
 from logging import getLogger
-from typing import Annotated, List
+from typing import List
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import END, StateGraph
-from langgraph.graph.state import CompiledStateGraph
-from langsmith import traceable
+from langgraph.func import entrypoint, task
 from pydantic import BaseModel, Field
 
 from bookcast.config import GEMINI_API_KEY
@@ -30,41 +27,27 @@ class TopicSearchResult(BaseModel):
 
 class EvaluateResult(BaseModel):
     is_valid: bool = Field(..., description="適切か否か")
-    feedback_message: str = Field(..., description="フィードバックのリスト")
+    feedback_message: str = Field(..., description="フィードバックメッセージ")
 
 
-class State(BaseModel):
-    source_text: str = Field(..., description="台本の元となる文章")
-    topics: List[PodcastTopic] = Field(default_factory=list, description="トピックのリスト")
-    script: str = Field(default="", description="台本")
-    feedback_messages: Annotated[list[str], operator.add] = Field(
-        default_factory=list, description="作成された台本に対するフィードバック"
-    )
-    retry_count: int = Field(default=0, description="再実行回数")
-    is_valid: bool = Field(default=False, description="適切か否か")
-
-
-class PodcastTopicSearcher:
-    def __init__(self, llm):
-        self.llm = llm
-
-    @traceable(name="PodcastTopicSearcher")
-    async def run(self, state: State) -> TopicSearchResult:
-        prompt_text = """
+@task
+async def search_topics(llm, source_text: str) -> List[PodcastTopic]:
+    prompt_text = """
 あなたはトピックを抽出する専門家です。
 次の文章を元にして、ポッドキャストの台本を作成しようとしています。
 文章を読んで、3から5つのトピックを抽出してください。
 source_text:{source_text}
 """
 
-        message = ChatPromptTemplate(
-            [
-                ("human", prompt_text),
-            ]
-        )
+    message = ChatPromptTemplate(
+        [
+            ("human", prompt_text),
+        ]
+    )
 
-        chain = message | self.llm.with_structured_output(TopicSearchResult)
-        return await chain.ainvoke({"source_text": state.source_text})
+    chain = message | llm.with_structured_output(TopicSearchResult)
+    result = await chain.ainvoke({"source_text": source_text})
+    return result.topics
 
 
 def _format_topics(topics: List[PodcastTopic]) -> str:
@@ -75,13 +58,9 @@ def _format_topics(topics: List[PodcastTopic]) -> str:
     return acc
 
 
-class PodcastScriptWriter:
-    def __init__(self, llm):
-        self.llm = llm
-
-    @traceable(name="PodcastScriptWriter")
-    async def run(self, state: State) -> str:
-        system_prompt = """
+@task
+async def write_script(llm, source_text: str, topics: List[PodcastTopic], feedback_messages: List[str] = None) -> str:
+    system_prompt = """
 あなたはポッドキャストの台本を作成する専門家です。
 今回扱う内容は難しいですが、視聴者は専門知識を持っているため、難しいまま理解できます。
 与えられた文章をなるべく端折らず、会話で掘り下げていく形で台本を作成してください。
@@ -99,34 +78,30 @@ class PodcastScriptWriter:
 Speaker1: こんにちは。今日はいい天気ですね。
 Speaker2: 本当ですね。ちょっと暑いくらいですね。
 """
-        if state.feedback_messages:
-            system_prompt += "フィードバック: {feedback_messages}"
+    if feedback_messages:
+        system_prompt += f"フィードバック: {', '.join(feedback_messages)}"
 
-        formated_topics = _format_topics(state.topics)
-        prompt_text = f"トピック: {formated_topics}\n文章: {{source_text}}"
+    formated_topics = _format_topics(topics)
+    prompt_text = f"トピック: {formated_topics}\n文章: {{source_text}}"
 
-        message = ChatPromptTemplate(
-            [
-                ("system", system_prompt),
-                ("human", prompt_text),
-            ]
-        )
+    message = ChatPromptTemplate(
+        [
+            ("system", system_prompt),
+            ("human", prompt_text),
+        ]
+    )
 
-        chain = message | self.llm | StrOutputParser()
-        return await chain.ainvoke({"source_text": state.source_text})
+    chain = message | llm | StrOutputParser()
+    return await chain.ainvoke({"source_text": source_text})
 
 
-class PodcastScriptEvaluator:
-    def __init__(self, llm):
-        self.llm = llm
+@task
+async def evaluate_script(llm, script: str, topics: List[PodcastTopic]) -> EvaluateResult:
+    if not script:
+        return EvaluateResult(is_valid=False, feedback_message="台本がありません。作成してください。")
 
-    @traceable(name="PodcastScriptEvaluator")
-    async def run(self, state: State) -> EvaluateResult:
-        if state.script is None:
-            return EvaluateResult(is_valid=False, feedback_message="台本がありません。作成してください。")
-
-        topics = _format_topics(state.topics)
-        prompt_text = f"""
+    topics_formatted = _format_topics(topics)
+    prompt_text = f"""
 あなたはポッドキャストの台本を評価する専門家です。
 次の台本を読んで、以下の基準に基づいて評価してください。
 - トピックはすべて網羅されているか
@@ -135,81 +110,39 @@ class PodcastScriptEvaluator:
 適切であればtrueを返してください。
 不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。
 またフィードバックには必ず具体例を入れるようにしてください。
-トピック: {topics}
-台本: {state.script}
+トピック: {topics_formatted}
+台本: {script}
 """
 
-        message = ChatPromptTemplate(
-            [
-                ("human", prompt_text),
-            ]
-        )
+    message = ChatPromptTemplate(
+        [
+            ("human", prompt_text),
+        ]
+    )
 
-        chain = message | self.llm.with_structured_output(EvaluateResult)
-        return await chain.ainvoke({"script": state.script})
+    chain = message | llm.with_structured_output(EvaluateResult)
+    return await chain.ainvoke({"script": script})
 
 
-class PodcastOrchestrator:
-    def __init__(self, llm):
-        self.llm = llm
-        self.topic_searcher = PodcastTopicSearcher(llm)
-        self.script_writer = PodcastScriptWriter(llm)
-        self.script_evaluator = PodcastScriptEvaluator(llm)
-        self.graph = self._create_graph()
+@entrypoint()
+async def script_writing_workflow(source_text: str, llm) -> str:
+    topics = await search_topics(llm, source_text)
 
-    async def _search_topics(self, state: State) -> dict:
-        result = await self.topic_searcher.run(state)
-        return {
-            "topics": result.topics,
-        }
+    feedback_messages = []
+    retry_count = 0
+    script = ""
 
-    async def _write_script(self, state: State) -> dict:
-        script = await self.script_writer.run(state)
-        return {
-            "script": script,
-        }
+    while retry_count < MAX_RETRY_COUNT:
+        script = await write_script(llm, source_text, topics, feedback_messages)
+        evaluation = await evaluate_script(llm, script, topics)
 
-    async def _evaluate_script(self, state: State) -> dict:
-        result = await self.script_evaluator.run(state)
-        if result.is_valid:
-            return {"is_valid": True}
-        else:
-            return {
-                "is_valid": False,
-                "retry_count": state.retry_count + 1,
-                "feedback_message": [result.feedback_message],
-            }
+        if evaluation.is_valid:
+            return script
 
-    @staticmethod
-    def _should_retry_or_continue(state: State) -> bool:
-        if state.is_valid:
-            return True
-        elif state.retry_count < MAX_RETRY_COUNT:
-            return False
-        else:
-            return True
+        feedback_messages.append(evaluation.feedback_message)
+        retry_count += 1
 
-    def _create_graph(self) -> CompiledStateGraph:
-        graph = StateGraph(State)
-        graph.add_node("search_topics", self._search_topics)
-        graph.add_node("write_script", self._write_script)
-        graph.add_node("evaluate_script", self._evaluate_script)
-
-        graph.set_entry_point("search_topics")
-        graph.add_edge("search_topics", "write_script")
-        graph.add_edge("write_script", "evaluate_script")
-        graph.add_conditional_edges(
-            "evaluate_script",
-            self._should_retry_or_continue,
-            {True: END, False: "write_script"},
-        )
-
-        return graph.compile()
-
-    async def run(self, source_text) -> str:
-        state = State(source_text=source_text)
-        result = await self.graph.ainvoke(state)
-        return result["script"]
+    return script
 
 
 class ScriptWritingService:
@@ -220,8 +153,9 @@ class ScriptWritingService:
     @staticmethod
     async def _generate(chapter: Chapter) -> str:
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
-        script_writer_agent = PodcastOrchestrator(llm)
-        response = await script_writer_agent.run(chapter.extracted_text)
+        response = await script_writing_workflow.ainvoke(
+            {"source_text": chapter.extracted_text, "llm": llm}, config={"run_name": "ScriptWritingAgent"}
+        )
         return response
 
     async def _generate_script(self, chapter: Chapter):
