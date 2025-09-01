@@ -1,4 +1,7 @@
+import gc
+import os
 import pathlib
+import tempfile
 from logging import getLogger
 
 from pydub import AudioSegment
@@ -45,19 +48,20 @@ class AudioService:
         return opening
 
     @staticmethod
-    def _coordinate_script(project: Project, chapter: Chapter) -> AudioSegment:
-        script_audios = []
-        for i in range(chapter.script_file_count):
-            logger.info(f"Downloading TTS file for chapter {chapter.chapter_number}, index {i}")
-            TTSFileService.download_from_gcs(project.filename, chapter.chapter_number, i)
-            audio = TTSFileService.read(project.filename, chapter.chapter_number, i)
-            script_audios.append(audio)
+    async def _coordinate_script(project: Project, chapter: Chapter) -> AudioSegment:
+        logger.info(f"Downloading TTS file for chapter {chapter.chapter_number}")
+        file_paths = await TTSFileService.bulk_download_from_gcs(project.filename, chapter.chapter_number, chapter.script_file_count)
 
         acc = AudioSegment.empty()
-        for script_audio in script_audios:
+        for file_path in file_paths:
+            script_audio = TTSFileService.read_from_path(file_path)
+
             script_audio = normalize(script_audio)
             script_audio = trim_silence(script_audio)
             acc += script_audio
+
+            del script_audio
+            gc.collect()
 
         return acc
 
@@ -67,19 +71,22 @@ class AudioService:
         bgm_quiet = bgm_looped - 13
         return bgm_quiet
 
-    def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
+    async def generate_audio(self, project: Project, chapters: list[Chapter]) -> None:
         logger.info("Generating audio for chapters")
 
         logger.info("Starting audio generation")
         jingle_audio = self._coordinate_jingle()
 
         for chapter in chapters:
-            script_audio = self._coordinate_script(project, chapter)
+            script_audio = await self._coordinate_script(project, chapter)
             bgm_audio = self._coordinate_bgm(len(script_audio))
             script_with_bgm = script_audio.overlay(bgm_audio)
             output_audio = jingle_audio + script_with_bgm
 
             source_file_path = CompletedAudioFileService.write(project.filename, chapter.chapter_number, output_audio)
             CompletedAudioFileService.upload_gcs_from_file(source_file_path)
+
+            del script_audio, bgm_audio, script_with_bgm, output_audio
+            gc.collect()
 
         logger.info("Audio generation completed successfully.")

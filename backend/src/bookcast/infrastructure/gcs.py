@@ -1,4 +1,6 @@
 import pathlib
+import asyncio
+from typing import List
 
 from google.cloud import storage
 
@@ -18,6 +20,11 @@ class GCSFileUploadable:
         bucket = storage_client.bucket(GOOGLE_CLOUD_STORAGE_BUCKET)
         blob = bucket.blob(str(destination_key))
         blob.download_to_filename(str(source_file_name))
+
+    @classmethod
+    async def _bulk_download_from_gcs(cls, source_file_names: List[pathlib.Path]) -> None:
+        tasks = [asyncio.to_thread(cls._download_from_gcs, source_file_name) for source_file_name in source_file_names]
+        await asyncio.gather(*tasks)
 
     @classmethod
     def upload_gcs_from_file(cls, source_file_name: pathlib.Path) -> None:

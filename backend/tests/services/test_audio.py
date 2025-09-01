@@ -38,7 +38,8 @@ class TestAudioServiceIntegration:
         ]
 
         mock_audio_segments = AudioSegment.silent(duration=2000)
-        mock_tts_file_service.read.return_value = mock_audio_segments
+        mock_tts_file_service.bulk_download_from_gcs.return_value = ["/fake/path1.wav"]
+        mock_tts_file_service.read_from_path.return_value = mock_audio_segments
 
         mock_completed_audio_file_service.write.return_value = "/fake/path/output.wav"
         mock_completed_audio_file_service.upload_gcs_from_file.return_value = None
@@ -47,6 +48,7 @@ class TestAudioServiceIntegration:
 
         audio_service.generate_audio(project, chapters)
 
-        assert mock_tts_file_service.read.call_count == 2
+        assert mock_tts_file_service.bulk_download_from_gcs.call_count == 2
+        assert mock_tts_file_service.read_from_path.call_count == 2
         assert mock_completed_audio_file_service.write.call_count == 2
         assert mock_completed_audio_file_service.upload_gcs_from_file.call_count == 2

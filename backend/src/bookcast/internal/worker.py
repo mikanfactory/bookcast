@@ -263,7 +263,7 @@ async def start_creating_audio(
     )
 
     start_time = time.time()
-    audio_service.generate_audio(project, chapters)
+    await audio_service.generate_audio(project, chapters)
     execution_time = time.time() - start_time
 
     project_service.update_project_status(project, ProjectStatus.creating_audio_completed)

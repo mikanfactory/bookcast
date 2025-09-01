@@ -142,6 +142,10 @@ class TTSFileService(GCSFileUploadable):
         return AudioSegment.from_wav(audio_path)
 
     @classmethod
+    def read_from_path(cls, audio_path: pathlib.Path) -> AudioSegment:
+        return AudioSegment.from_wav(audio_path)
+
+    @classmethod
     def write(cls, filename: str, chapter_number: int, index: int, pcm_data: bytes) -> pathlib.Path:
         audio_dir = build_audio_directory(filename)
         audio_dir.mkdir(parents=True, exist_ok=True)
@@ -164,6 +168,14 @@ class TTSFileService(GCSFileUploadable):
         cls._download_from_gcs(audio_path)
         return audio_path
 
+    @classmethod
+    async def bulk_download_from_gcs(cls, filename: str, chapter_number: int, script_file_count: int) -> list[pathlib.Path]:
+        audio_dir = build_audio_directory(filename)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        audio_paths = [resolve_audio_path(filename, chapter_number, index) for index in range(script_file_count)]
+        await cls._bulk_download_from_gcs(audio_paths)
+        return audio_paths
 
 class CompletedAudioFileService(GCSFileUploadable):
     @classmethod
