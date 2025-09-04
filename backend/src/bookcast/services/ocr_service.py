@@ -18,6 +18,8 @@ from bookcast.services.file_service import OCRImageFileService
 
 logger = getLogger(__name__)
 
+GEMINI_MODEL = "gemini-2.0-flash"
+
 
 class OCRResult(BaseModel):
     extracted_string: str = Field(..., description="画像から読み取れた文字列")
@@ -137,7 +139,7 @@ class OCRService:
 
     async def _extract(self, image: Image.Image) -> str:
         base64_image = self.image_to_base64_png(image)
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
+        llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0.01)
         response = await ocr_workflow.ainvoke(
             {"base64_image": base64_image, "llm": llm}, config={"run_name": "OCRAgent"}
         )

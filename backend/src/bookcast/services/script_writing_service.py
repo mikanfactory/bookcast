@@ -15,6 +15,8 @@ from bookcast.services.chapter_service import ChapterService
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
 
+GEMINI_MODEL = "gemini-2.5-flash"
+
 
 class PodcastTopic(BaseModel):
     title: str = Field(..., description="トピックのタイトル")
@@ -57,6 +59,7 @@ def _format_topics(topics: List[PodcastTopic]) -> str:
 
     return acc
 
+
 RULES = """
 - ユーザーから与えられたトピックはすべて網羅してください。
 - ポッドキャストはどんなに長くなっても構いません。全部のトピックを詳しく説明し、内容を端折らないでください。
@@ -68,6 +71,7 @@ RULES = """
 - 教授が流れを作りつつ、学生のするどい質問を交えながら、トピックを深掘りしていく形にしてください。
 - 出力の形式は下記のようにしてください。
 """
+
 
 @task
 async def write_script(llm, source_text: str, topics: List[PodcastTopic], feedback_messages: List[str] = None) -> str:
@@ -153,7 +157,7 @@ class ScriptWritingService:
 
     @staticmethod
     async def _generate(chapter: Chapter) -> str:
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0.01)
+        llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0.01)
         response = await script_writing_workflow.ainvoke(
             {"source_text": chapter.extracted_text, "llm": llm}, config={"run_name": "ScriptWritingAgent"}
         )

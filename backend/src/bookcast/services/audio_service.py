@@ -1,7 +1,5 @@
 import gc
-import os
 import pathlib
-import tempfile
 from logging import getLogger
 
 from pydub import AudioSegment
@@ -50,7 +48,9 @@ class AudioService:
     @staticmethod
     async def _coordinate_script(project: Project, chapter: Chapter) -> AudioSegment:
         logger.info(f"Downloading TTS file for chapter {chapter.chapter_number}")
-        file_paths = await TTSFileService.bulk_download_from_gcs(project.filename, chapter.chapter_number, chapter.script_file_count)
+        file_paths = await TTSFileService.bulk_download_from_gcs(
+            project.filename, chapter.chapter_number, chapter.script_file_count
+        )
 
         acc = AudioSegment.empty()
         for file_path in file_paths:

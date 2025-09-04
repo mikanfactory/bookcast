@@ -13,6 +13,7 @@ from bookcast.entities import Chapter, ChapterStatus, Project
 from bookcast.services.file_service import TTSFileService
 
 logger = getLogger(__name__)
+GEMINI_MODEL = "gemini-2.5-flash-preview-tts"
 
 
 class TextToSpeechService:
@@ -33,7 +34,7 @@ class TextToSpeechService:
 
     async def _invoke(self, script: str) -> bytes:
         response = await self.client.aio.models.generate_content(
-            model="gemini-2.5-flash-preview-tts",
+            model=GEMINI_MODEL,
             contents=script,
             config=types.GenerateContentConfig(
                 response_modalities=["AUDIO"],

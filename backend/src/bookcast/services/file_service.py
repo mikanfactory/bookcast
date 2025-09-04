@@ -169,13 +169,16 @@ class TTSFileService(GCSFileUploadable):
         return audio_path
 
     @classmethod
-    async def bulk_download_from_gcs(cls, filename: str, chapter_number: int, script_file_count: int) -> list[pathlib.Path]:
+    async def bulk_download_from_gcs(
+        cls, filename: str, chapter_number: int, script_file_count: int
+    ) -> list[pathlib.Path]:
         audio_dir = build_audio_directory(filename)
         audio_dir.mkdir(parents=True, exist_ok=True)
 
         audio_paths = [resolve_audio_path(filename, chapter_number, index) for index in range(script_file_count)]
         await cls._bulk_download_from_gcs(audio_paths)
         return audio_paths
+
 
 class CompletedAudioFileService(GCSFileUploadable):
     @classmethod
