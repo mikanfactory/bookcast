@@ -57,14 +57,7 @@ def _format_topics(topics: List[PodcastTopic]) -> str:
 
     return acc
 
-
-@task
-async def write_script(llm, source_text: str, topics: List[PodcastTopic], feedback_messages: List[str] = None) -> str:
-    system_prompt = """
-あなたはポッドキャストの台本を作成する専門家です。
-今回扱う内容は難しいですが、視聴者は専門知識を持っているため、難しいまま理解できます。
-与えられた文章をなるべく端折らず、会話で掘り下げていく形で台本を作成してください。
-必ず守るルール:
+RULES = """
 - ユーザーから与えられたトピックはすべて網羅してください。
 - ポッドキャストはどんなに長くなっても構いません。全部のトピックを詳しく説明し、内容を端折らないでください。
 - 本文のみを出力してください。オープニングとエンディングは別で処理します。
@@ -74,6 +67,16 @@ async def write_script(llm, source_text: str, topics: List[PodcastTopic], feedba
 - 教授はトピックに関する深い知識を持っており、聞き手は基礎知識を持っていますが、詳しくは知りません。
 - 教授が流れを作りつつ、学生のするどい質問を交えながら、トピックを深掘りしていく形にしてください。
 - 出力の形式は下記のようにしてください。
+"""
+
+@task
+async def write_script(llm, source_text: str, topics: List[PodcastTopic], feedback_messages: List[str] = None) -> str:
+    system_prompt = f"""
+あなたはポッドキャストの台本を作成する専門家です。
+今回扱う内容は難しいですが、視聴者は専門知識を持っているため、難しいまま理解できます。
+与えられた文章をなるべく端折らず、会話で掘り下げていく形で台本を作成してください。
+必ず守るルール:
+{RULES}
 **出力例**
 Speaker1: こんにちは。今日はいい天気ですね。
 Speaker2: 本当ですね。ちょっと暑いくらいですね。
@@ -103,10 +106,8 @@ async def evaluate_script(llm, script: str, topics: List[PodcastTopic]) -> Evalu
     topics_formatted = _format_topics(topics)
     prompt_text = f"""
 あなたはポッドキャストの台本を評価する専門家です。
-次の台本を読んで、以下の基準に基づいて評価してください。
-- トピックはすべて網羅されているか
-- 話のつながりが不自然でないか
-- 聞き手にとって十分な情報が提供されているか
+次の台本を読んで、以下のルールを守れているか評価してください。
+{RULES}
 適切であればtrueを返してください。
 不適切であれば、次に活かせるように必ずフィードバックを返してください。フィードバックは必ず日本語で返してください。
 またフィードバックには必ず具体例を入れるようにしてください。
