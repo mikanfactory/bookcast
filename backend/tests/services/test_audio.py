@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pydub import AudioSegment
@@ -12,7 +12,7 @@ class TestAudioServiceIntegration:
     @pytest.mark.integration
     @patch.object(audio_service, "CompletedAudioFileService")
     @patch.object(audio_service, "TTSFileService")
-    def test_generate_audio(self, mock_tts_file_service, mock_completed_audio_file_service):
+    async def test_generate_audio(self, mock_tts_file_service, mock_completed_audio_file_service):
         project = Project(id=1, filename="test_sample.pdf", status=ProjectStatus.start_creating_audio)
         chapters = [
             Chapter(
@@ -38,7 +38,7 @@ class TestAudioServiceIntegration:
         ]
 
         mock_audio_segments = AudioSegment.silent(duration=2000)
-        mock_tts_file_service.bulk_download_from_gcs.return_value = ["/fake/path1.wav"]
+        mock_tts_file_service.bulk_download_from_gcs = AsyncMock(return_value=["/fake/path1.wav"])
         mock_tts_file_service.read_from_path.return_value = mock_audio_segments
 
         mock_completed_audio_file_service.write.return_value = "/fake/path/output.wav"
@@ -46,7 +46,7 @@ class TestAudioServiceIntegration:
 
         audio_service = AudioService(audio_resource_directory="tests/resources")
 
-        audio_service.generate_audio(project, chapters)
+        await audio_service.generate_audio(project, chapters)
 
         assert mock_tts_file_service.bulk_download_from_gcs.call_count == 2
         assert mock_tts_file_service.read_from_path.call_count == 2

@@ -157,6 +157,7 @@ class TestStartCreatingAudio:
         client, project_service, chapter_service = client_with_mock
 
         project_service.find_project.return_value.status = ProjectStatus.tts_completed
+        audio_service.generate_audio = AsyncMock()
 
         response = client.post("/internal/api/v1/workers/start_creating_audio", json={"project_id": 1})
 
