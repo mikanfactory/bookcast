@@ -1,4 +1,5 @@
 .env
+.mcp.json
 
 # Python-generated files
 __pycache__/
