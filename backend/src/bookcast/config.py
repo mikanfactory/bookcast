@@ -18,6 +18,7 @@ CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
 BOOKCAST_WORKER_QUEUE = "bookcast-worker"
 BOOKCAST_TTS_WORKER_QUEUE = "bookcast-tts-worker"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if ENV == "production":
     SUPABASE_PROJECT_URL = os.getenv("SUPABASE_PROJECT_URL")
