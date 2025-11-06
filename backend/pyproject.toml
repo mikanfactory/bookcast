@@ -12,6 +12,7 @@ dependencies = [
     "hypercorn>=0.17.3",
     "langchain>=0.3.26",
     "langchain-google-genai>=2.1.6",
+    "langchain-openai>=1.0.2",
     "langgraph>=0.5.1",
     "pdf2image>=1.17.0",
     "pillow>=11.2.1",

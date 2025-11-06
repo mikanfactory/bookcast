@@ -5,7 +5,7 @@ from logging import getLogger
 from google import genai
 from google.genai import types
 from google.genai.errors import ServerError
-from langchain.text_splitter import CharacterTextSplitter
+from langchain_text_splitters import CharacterTextSplitter
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from bookcast.config import GEMINI_API_KEY

@@ -5,8 +5,10 @@ from typing import List
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.runnables.config import RunnableConfig
 from langgraph.func import entrypoint, task
-from pydantic import BaseModel, Field
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, ConfigDict, Field
 
 from bookcast.config import GEMINI_API_KEY
 from bookcast.entities import Chapter, ChapterStatus, Project
@@ -14,8 +16,6 @@ from bookcast.services.chapter_service import ChapterService
 
 logger = getLogger(__name__)
 MAX_RETRY_COUNT = 3
-
-GEMINI_MODEL = "gemini-2.5-flash"
 
 
 class PodcastTopic(BaseModel):
@@ -30,6 +30,13 @@ class TopicSearchResult(BaseModel):
 class EvaluateResult(BaseModel):
     is_valid: bool = Field(..., description="適切か否か")
     feedback_message: str = Field(..., description="フィードバックメッセージ")
+
+
+class ScriptWritingWorkflowInput(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    gemini_light_model: ChatGoogleGenerativeAI
+    gemini_heavy_model: ChatGoogleGenerativeAI
+    openai_model: ChatOpenAI
 
 
 @task
@@ -130,16 +137,16 @@ async def evaluate_script(llm, script: str, topics: List[PodcastTopic]) -> Evalu
 
 
 @entrypoint()
-async def script_writing_workflow(source_text: str, llm) -> str:
-    topics = await search_topics(llm, source_text)
+async def script_writing_workflow(inputs: ScriptWritingWorkflowInput) -> str:
+    topics = await search_topics(inputs.gemini_light_model, inputs.source_text)
 
     feedback_messages = []
     retry_count = 0
     script = ""
 
     while retry_count < MAX_RETRY_COUNT:
-        script = await write_script(llm, source_text, topics, feedback_messages)
-        evaluation = await evaluate_script(llm, script, topics)
+        script = await write_script(inputs.openai_model, inputs.source_text, topics, feedback_messages)
+        evaluation = await evaluate_script(inputs.gemini_light_model, script, topics)
 
         if evaluation.is_valid:
             return script
@@ -157,10 +164,20 @@ class ScriptWritingService:
 
     @staticmethod
     async def _generate(chapter: Chapter) -> str:
-        llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0.01)
+        gemini_light_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=GEMINI_API_KEY, temperature=0.2)
+        gemini_heavy_model = ChatGoogleGenerativeAI(model="gemini-2.5-pro", api_key=GEMINI_API_KEY, temperature=0.2)
+        openai_model = ChatOpenAI(model="gpt-5", temperature=0.2)
+
         response = await script_writing_workflow.ainvoke(
-            {"source_text": chapter.extracted_text, "llm": llm}, config={"run_name": "ScriptWritingAgent"}
+            ScriptWritingWorkflowInput(
+                source_text=chapter.extracted_text,
+                gemini_light_model=gemini_light_model,
+                gemini_heavy_model=gemini_heavy_model,
+                openai_model=openai_model,
+            ),
+            config=RunnableConfig(run_name="ScriptWritingAgent"),
         )
+
         return response
 
     async def _generate_script(self, chapter: Chapter):
