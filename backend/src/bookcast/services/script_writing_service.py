@@ -34,6 +34,7 @@ class EvaluateResult(BaseModel):
 
 class ScriptWritingWorkflowInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    source_text: str = Field(..., description="もとの文章")
     gemini_light_model: ChatGoogleGenerativeAI
     gemini_heavy_model: ChatGoogleGenerativeAI
     openai_model: ChatOpenAI
@@ -76,6 +77,7 @@ RULES = """
 - 1人は教授（Speaker1）、もう1人は学生（Speaker2）です。
 - 教授はトピックに関する深い知識を持っており、聞き手は基礎知識を持っていますが、詳しくは知りません。
 - 教授が流れを作りつつ、学生のするどい質問を交えながら、トピックを深掘りしていく形にしてください。
+- 一直線に進めるのではなく、少し言い直したり、改めて内容を確認したりして、進行の速度を落としてください。
 - 出力の形式は下記のようにしてください。
 """
 
