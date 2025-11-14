@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,6 +7,7 @@ from bookcast.dependencies import get_project_service
 from bookcast.entities import Project, ProjectStatus
 from bookcast.main import app
 from bookcast.services import file_service
+from bookcast.services.chapter_search_service import ChapterStartPageNumber
 from bookcast.services.project_service import ProjectService
 
 
@@ -142,3 +143,48 @@ class TestDownloadProject:
 
         expected_project = Project(id=1, filename="test1.pdf", status=ProjectStatus.not_started)
         mock_create_archive.assert_called_once_with(expected_project)
+
+
+class TestExtractTableOfContents:
+    @patch("bookcast.routers.project.ChapterSearchService")
+    def test_extract_table_of_contents_success(self, mock_chapter_search_service_class, client_with_mock):
+        client, project_service = client_with_mock
+
+        mock_chapter_pages = [
+            ChapterStartPageNumber(page_number=1, title="第1章 はじめに"),
+            ChapterStartPageNumber(page_number=5, title="第2章 基本概念"),
+            ChapterStartPageNumber(page_number=10, title="第3章 応用"),
+        ]
+
+        mock_service_instance = MagicMock()
+        mock_service_instance.process = AsyncMock(return_value=mock_chapter_pages)
+        mock_chapter_search_service_class.return_value = mock_service_instance
+
+        response = client.post("/api/v1/projects/1/extract_table_of_contents")
+
+        assert response.status_code == 200
+        resp = response.json()
+        assert len(resp) == 3
+        assert resp[0]["page_number"] == 1
+        assert resp[0]["title"] == "第1章 はじめに"
+        assert resp[1]["page_number"] == 5
+        assert resp[1]["title"] == "第2章 基本概念"
+        assert resp[2]["page_number"] == 10
+        assert resp[2]["title"] == "第3章 応用"
+
+        project_service.project_repo.find.assert_called_once_with(1)
+        expected_project = Project(id=1, filename="test1.pdf", status=ProjectStatus.not_started)
+        mock_service_instance.process.assert_called_once_with(expected_project)
+
+    def test_extract_table_of_contents_project_not_found(self, client_with_empty_mock):
+        client, project_service = client_with_empty_mock
+
+        response = client.post("/api/v1/projects/999/extract_table_of_contents")
+
+        assert response.status_code == 404
+        resp = response.json()
+        assert resp["detail"]["success"] is False
+        assert resp["detail"]["message"] == "Project not found"
+        assert resp["detail"]["error_code"] == "PROJECT_NOT_FOUND"
+
+        project_service.project_repo.find.assert_called_once_with(999)

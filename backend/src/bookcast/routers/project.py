@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from bookcast.dependencies import get_project_service
 from bookcast.entities import Project
+from bookcast.services.chapter_search_service import ChapterSearchService
 from bookcast.services.project_service import ProjectService
 
 logger = getLogger(__name__)
@@ -83,3 +84,37 @@ async def download_project(project_id: int, project_service: ProjectService = De
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"},
     )
+
+
+@router.post("/{project_id}/extract_table_of_contents")
+async def extract_table_of_contents(project_id: int, project_service: ProjectService = Depends(get_project_service)):
+    logger.info(f"Extract table of contents for project ID: {project_id}")
+
+    try:
+        project = project_service.find_project(project_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "success": False,
+                "message": "Project not found",
+                "error_code": "PROJECT_NOT_FOUND",
+            },
+        )
+
+    chapter_search_service = ChapterSearchService()
+    try:
+        table_of_contents = await chapter_search_service.process(project)
+    except Exception as e:
+        logger.error(f"Error extracting table of contents for project ID {project_id}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "success": False,
+                "message": "Failed to extract table of contents",
+                "error_code": "TOC_EXTRACTION_FAILED",
+            },
+        )
+
+    return table_of_contents
