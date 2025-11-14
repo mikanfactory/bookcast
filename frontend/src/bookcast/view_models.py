@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 
 
+class ChapterStartPageNumber(BaseModel):
+    page_number: int
+    title: str
+
+
 class ChapterViewModel(BaseModel):
     start_page: int = 0
     end_page: int = 0

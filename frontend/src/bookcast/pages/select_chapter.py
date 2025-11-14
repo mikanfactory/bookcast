@@ -8,13 +8,13 @@ from streamlit.logger import get_logger
 from bookcast.config import BACKEND_URL
 from bookcast.page import Rooter
 from bookcast.session_state import SessionState as ss
-from bookcast.view_models import ProjectViewModel
+from bookcast.view_models import ChapterStartPageNumber, ProjectViewModel
 
 logger = get_logger(__name__)
 
 # Constants
-DEFAULT_IMAGE_DIR = pathlib.Path("downloads/3654812/images")  # Default directory for debugging
-DEFAULT_PROJECT_ID = 1  # Default project ID for debugging
+DEFAULT_IMAGE_DIR = pathlib.Path("downloads/2506.04209/images")  # Default directory for debugging
+DEFAULT_PROJECT_ID = 10  # Default project ID for debugging
 BUTTON_STYLE = {"use_container_width": True}
 
 
@@ -133,6 +133,50 @@ def render_single_chapter(project: ProjectViewModel, chapter_number: int, select
         render_chapter_info(chapter_info, is_compact=True)
 
 
+def jump_to_page(page_num: int, max_pages: int):
+    if 1 <= page_num <= max_pages:
+        st.session_state[ss.current_page] = page_num
+
+
+def render_toc_extraction_section(project: ProjectViewModel, max_pages: int):
+    st.header("📖 目次から章を探す")
+
+    # Page offset input
+    offset = st.number_input(
+        "ページオフセット",
+        min_value=0,
+        max_value=100,
+        value=st.session_state.get(ss.page_offset, 0),
+        help="PDFの表紙や前付けページ数を入力",
+    )
+    st.session_state[ss.page_offset] = offset
+
+    # Extract button
+    if st.button("目次を抽出する", type="primary", **BUTTON_STYLE):
+        with st.spinner("目次を抽出中..."):
+            try:
+                results = extract_table_of_contents(project.project_id)
+                st.session_state[ss.extracted_table_of_contents] = results
+                st.rerun()
+            except Exception as e:
+                st.warning("目次が見つかりませんでした")
+                logger.error(f"TOC extraction failed: {e}")
+
+    # Display extracted results
+    extracted_toc = st.session_state.get(ss.extracted_table_of_contents)
+    if extracted_toc:
+        st.divider()
+        st.subheader("抽出結果")
+
+        for item in extracted_toc:
+            adjusted_page = item.page_number + offset
+            if st.button(f"• {item.title} (P{adjusted_page})", key=f"toc_{item.page_number}_{item.title}"):
+                jump_to_page(adjusted_page, max_pages)
+                st.rerun()
+
+    st.divider()
+
+
 def render_chapter_sidebar(project: ProjectViewModel, selected_chapter_number: int):
     with st.sidebar:
         st.header("章管理")
@@ -215,6 +259,24 @@ def save_chapters(project: ProjectViewModel):
     return resp
 
 
+def extract_table_of_contents(project_id: int) -> list[ChapterStartPageNumber]:
+    logger.info(f"Extracting table of contents for project: {project_id}")
+
+    url = f"{BACKEND_URL}/api/v1/projects/{project_id}/extract_table_of_contents"
+
+    try:
+        resp = requests.post(url)
+        resp.raise_for_status()
+
+        raw_data = resp.json()
+        results = [ChapterStartPageNumber(**item) for item in raw_data]
+
+        return results
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to extract table of contents: {e}")
+        raise
+
+
 def main():
     st.title("章設定")
     st.write("本のページを見ながら、各章の開始ページと終了ページを設定してください。")
@@ -231,12 +293,15 @@ def main():
     render_chapter_sidebar(state["project"], state["selected_chapter"])
 
     # Main content area
-    col1, col2 = st.columns([2, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
 
     with col1:
-        render_page_viewer(state["image_files"], state["current_page"], state["max_pages"])
+        render_toc_extraction_section(state["project"], state["max_pages"])
 
     with col2:
+        render_page_viewer(state["image_files"], state["current_page"], state["max_pages"])
+
+    with col3:
         render_chapter_controls(state["selected_chapter"], state["current_page"], state["project"])
         render_validation_section(state["project"])
 

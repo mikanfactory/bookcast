@@ -8,6 +8,8 @@ class SessionState(StrEnum):
     # Chapter Page
     current_page = "_current_page"
     selected_chapter_number = "_selected_chapter_number"
+    extracted_table_of_contents = "_extracted_table_of_contents"
+    page_offset = "_page_offset"
 
     # Podcast Page
     downloaded_from_server = "_downloaded_from_server"
