@@ -35,6 +35,7 @@ deploy/server:
 	docker push $(IMAGE) && \
 	gcloud run deploy bookcast-server \
 		--image=$(IMAGE):latest \
+		--port=8000 \
 		--set-env-vars=ENV=production \
 		--region=$(GOOGLE_CLOUD_LOCATION) \
 		--timeout=60m \
